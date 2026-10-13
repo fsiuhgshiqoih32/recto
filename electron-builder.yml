@@ -1,0 +1,43 @@
+appId: org.recto.app
+productName: Recto
+copyright: Copyright © 2026 Recto contributors
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - "!**/*.map"
+asar: true
+fileAssociations:
+  - ext: recto
+    name: Recto book
+    description: Recto book
+    role: Editor
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+  artifactName: Recto-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Recto
+  license: LICENSE
+  deleteAppDataOnUninstall: false
+mac:
+  target: [dmg]
+  category: public.app-category.productivity
+  icon: build/icon.png
+  artifactName: Recto-${version}-${arch}.${ext}
+linux:
+  target: [AppImage, deb]
+  category: Office
+  icon: build/icon.png
+  maintainer: Recto contributors
+  artifactName: Recto-${version}-${arch}.${ext}

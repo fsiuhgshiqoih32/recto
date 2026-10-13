@@ -1,0 +1,934 @@
+{
+  "format": "recto",
+  "version": 1,
+  "book": {
+    "id": "c4783d05-c2ec-47ad-bd2e-78e65ccaf59a",
+    "version": 1,
+    "meta": {
+      "title": "The Lamp at Harrow Point",
+      "subtitle": "A Recto Sample Novella",
+      "author": "Mara Quill",
+      "publisher": "Recto Sample Press",
+      "language": "en",
+      "isbnEbook": "",
+      "isbnPrint": "",
+      "copyrightYear": "2026",
+      "description": "A lighthouse keeper inherits a ledger that counts more than candles."
+    },
+    "style": {
+      "theme": "octavo",
+      "trim": "5.5x8.5",
+      "rectoHeader": "title",
+      "startOnRecto": true,
+      "dropCaps": true,
+      "embedFonts": false
+    },
+    "elements": [
+      {
+        "id": "86e74139-6451-4827-85de-ea650e5cf5c9",
+        "kind": "title-page",
+        "matter": "front",
+        "title": "Title Page",
+        "includeInToc": false,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        }
+      },
+      {
+        "id": "13096d75-a170-4e0e-9ddc-0a8417e9bf4f",
+        "kind": "copyright",
+        "matter": "front",
+        "title": "Copyright",
+        "includeInToc": false,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Copyright © 2026 by Mara Quill"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "All rights reserved."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "No part of this book may be reproduced in any form or by any electronic or mechanical means, including information storage and retrieval systems, without written permission from the author, except for the use of brief quotations in a book review."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "This is a work of fiction. Names, characters, places, and incidents are products of the author’s imagination or are used fictitiously."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "d89a60e3-5987-47d2-b7f9-e7cd72e990ef",
+        "kind": "dedication",
+        "matter": "front",
+        "title": "Dedication",
+        "includeInToc": false,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "For everyone who has ever kept a list nobody asked for.",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "513af21b-06e9-4a75-8125-911b901e7753",
+        "kind": "epigraph",
+        "matter": "front",
+        "title": "Epigraph",
+        "includeInToc": false,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“Wick trimmed. Glass cleaned. Oil, eleven gallons. Nothing else to report, which is the whole of the job.”"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": "right"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "— The Harrow Point log, 1887"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "341b75a0-a40b-40a9-9c81-cdbbf4ddb6b3",
+        "kind": "toc",
+        "matter": "front",
+        "title": "Contents",
+        "includeInToc": false,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        }
+      },
+      {
+        "id": "8bcc6683-8264-42e4-ae1b-3179ed57d01c",
+        "kind": "chapter",
+        "matter": "body",
+        "title": "Prologue",
+        "numbered": false,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The first keeper of the Harrow Point light left behind three things: a brass key, a cracked barometer, and a ledger bound in green cloth that nobody had thought to read for ninety years."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The key opened nothing anyone could find. The barometer had been reading "
+                },
+                {
+                  "type": "text",
+                  "text": "Change",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " since the winter of 1931, and the town had long ago stopped taking it personally. The ledger sat on the lowest shelf of the watch room between a tide table and a tin of matches, where it had been put down by someone who meant to come back for it."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "It was, everyone agreed, the most boring book in the county. Page after page of oil and wick and weather. The kind of book that is only ever opened by accident, or by someone with nothing else to do."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Which is how Ada Fenn came to open it, on her first night alone with the lamp."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "acadc05d-e478-4c43-8177-e47c80549de3",
+        "kind": "part",
+        "matter": "body",
+        "title": "The Ledger",
+        "numbered": true,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        }
+      },
+      {
+        "id": "2e951278-6f8e-4dfc-9640-6684399232d1",
+        "kind": "chapter",
+        "matter": "body",
+        "title": "The Inventory",
+        "numbered": true,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The lamp was lit at a quarter past five, which the ledger would have called "
+                },
+                {
+                  "type": "text",
+                  "text": "early",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " and Ada called "
+                },
+                {
+                  "type": "text",
+                  "text": "dark",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": ". She climbed the hundred and eight steps with a thermos in one hand and the green book under her arm, and she did not look out of the windows until she had checked every brass fitting twice."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The Harbor Commission had been very clear about the checking. There was a laminated card about it, screwed to the wall beside the door. "
+                },
+                {
+                  "type": "text",
+                  "text": "Inspect. Record. Report.",
+                  "marks": [
+                    {
+                      "type": "smallCaps"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " Someone had added, in pencil, "
+                },
+                {
+                  "type": "text",
+                  "text": "Repeat",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "She sat down at the small desk under the lamp room, opened the ledger to a clean page near the back, and found that there were no clean pages. Every line had been used. The last entry, in a hand that leaned hard to the right, read simply:"
+                }
+              ]
+            },
+            {
+              "type": "blockquote",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Oct. 12.",
+                      "marks": [
+                        {
+                          "type": "smallCaps"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " Wind NNE, moderate. Oil, nine gallons. Glass cleaned."
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Somebody should continue this."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Ada read it three times. Then she went down to the storeroom, found a fresh notebook in a box of fresh notebooks that the Commission had sent in 1974 and never been thanked for, and carried it back up the stairs."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "She wrote the date. She wrote the wind. She went outside onto the gallery and counted the gulls on the breakwater, because the old ledger had counted gulls, and it seemed rude to stop."
+                }
+              ]
+            },
+            {
+              "type": "sceneBreak"
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "By the end of the first week she had learned the rhythm of the place. The lamp did not need her, exactly; it was electric now, and it turned on a timer, and a small grey box in the basement reported its health to an office two hundred miles inland. But the ledger needed her. That was the part nobody had mentioned at the interview."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "She kept it the way the old keepers had. Wind. Weather. Oil, though there was no oil, so she wrote "
+                },
+                {
+                  "type": "text",
+                  "text": "none",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " and felt faintly guilty about it each night. Ships seen. Gulls. Visitors, of whom there were none, until the Thursday when there was one."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“You’re the new one,” said the woman at the door. She was perhaps seventy, in a yellow coat, holding a cake tin. “I’m Bea. I used to bring the last one biscuits. He never ate them but he liked to be asked.”"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“I’ll eat them,” said Ada."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“Good,” said Bea, and came in without being invited, which Ada would later write down in the ledger under "
+                },
+                {
+                  "type": "text",
+                  "text": "Visitors",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " as the most important event of the month."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "bbf2ae30-141c-43e1-8567-09274cca7cf6",
+        "kind": "chapter",
+        "matter": "body",
+        "title": "Fog Season",
+        "numbered": true,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“The fog comes in October,” Bea said, “and it doesn’t ask.”"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "She was right. It arrived on the sixteenth like a tenant with a long lease, and it did not leave. The breakwater vanished, then the harbor, then the end of the gallery railing, until Ada stood at the top of the tower in a room made of white and could not see her own hand when she held it out to check."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The foghorn was automatic too. It sounded every thirty seconds, a long low note that Ada felt in her teeth. She wrote it down. "
+                },
+                {
+                  "type": "text",
+                  "text": "Fog, dense. Horn, operating.",
+                  "marks": [
+                    {
+                      "type": "smallCaps"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " She found she liked writing it down. It made the fog into something that had been noted, and a thing that has been noted is a thing that can be survived."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "On the third night of fog she went back to the old ledger, not for any reason, and started reading from the very beginning."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The first keeper had been a man named Josiah Pell. He wrote small and he wrote everything. Oil and wick, yes, but also: "
+                },
+                {
+                  "type": "text",
+                  "text": "Bread from the Marsh house, very good.",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " And: "
+                },
+                {
+                  "type": "text",
+                  "text": "Child on the breakwater at dusk, sent home.",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " And once, in the spring of 1889, only: "
+                },
+                {
+                  "type": "text",
+                  "text": "Could not sleep. Counted the stairs. Still one hundred and eight.",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Ada laughed out loud, alone in the tower, and the fog swallowed the sound."
+                }
+              ]
+            },
+            {
+              "type": "sceneBreak"
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "She began to notice the pattern on the fifth night."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "It was in the margins. Every few pages, beside an ordinary entry, Josiah had made a tiny mark: a dot inside a circle, no larger than a lentil. At first she took it for a blot. Then she found another, and another, and she went downstairs for a pencil and a fresh page and began to list the dates."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "There were forty-one of them across eleven years. None of the entries they marked said anything unusual. "
+                },
+                {
+                  "type": "text",
+                  "text": "Wind SW. Oil, ten gallons. Glass cleaned.",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " Ordinary days, the most ordinary in the book."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "She read the list until the horn had sounded a hundred times, and then she put the pencil down, and said to the white window, “Well, what are you, then?”"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The fog, as was its habit, did not answer."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "0d6eb0c3-df2c-4c1f-a21b-24f3ceceb8d5",
+        "kind": "part",
+        "matter": "body",
+        "title": "The Light",
+        "numbered": true,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        }
+      },
+      {
+        "id": "bff25dc7-9ff8-4606-b5e9-8971468afc1a",
+        "kind": "chapter",
+        "matter": "body",
+        "title": "What the Ledger Knew",
+        "numbered": true,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Bea knew about the circles. Of course she did."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“My grandmother told me,” she said, cutting a lemon cake into eight exact pieces on the watch-room desk. “Josiah marked the nights when a boat came home that shouldn’t have. Lost in the fog, or the storm, or just lost. And then there it was, coming round the point, following the light.”"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“Forty-one boats,” said Ada."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "“Forty-one nights. Some nights it was more than one boat.” Bea slid a slice across. “He never wrote the names. He said it wasn’t his business who came home. Only that they did.”"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Ada looked at the old ledger for a long time. Then she looked at her own notebook, with its gulls and its "
+                },
+                {
+                  "type": "text",
+                  "text": "none",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " and its careful "
+                },
+                {
+                  "type": "text",
+                  "text": "Horn, operating",
+                  "marks": [
+                    {
+                      "type": "smallCaps"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": ", and she understood that she had been keeping the same book all along and had simply not known what it was for."
+                }
+              ]
+            },
+            {
+              "type": "sceneBreak"
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The fog lifted on the last day of October, all at once, the way a stage curtain goes up. The breakwater came back, then the harbor, then the long grey line of the sea. And there on the horizon, small and late and very much afloat, was a fishing boat that the harbor radio had been calling for since noon."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Ada watched it round the point. She watched it until it was safe inside the wall and its lights went out one by one along the quay."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Then she sat down at the desk, opened her notebook, and wrote the date and the wind and the weather. "
+                },
+                {
+                  "type": "text",
+                  "text": "Oil, none. Glass cleaned. Gulls, thirty-two.",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " And in the margin, very small, she drew a dot inside a circle."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Nobody would ever read it, probably. That was fine. That was, she was beginning to think, the whole of the job."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "2246252f-eb24-4b65-94af-0130694f7b41",
+        "kind": "chapter",
+        "matter": "body",
+        "title": "Epilogue",
+        "numbered": false,
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The Harbor Commission sends a new box of notebooks every few years. Nobody has asked them to. Nobody has told them to stop."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "If you visit Harrow Point on a clear evening, the light will come on at a quarter past five by the timer, and a woman in a yellow coat may offer you cake. Say yes. It will be written down."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "cbff8ef2-3122-4745-b06d-1c57747d16aa",
+        "kind": "acknowledgments",
+        "matter": "back",
+        "title": "Acknowledgments",
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "This story was written to give Recto something to typeset. Thanks to every keeper of every log that nobody reads, and to the people who build tools so that authors can spend their time writing instead of adjusting margins."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "4d51d5f1-cd00-4db3-a6dd-6650063f2d83",
+        "kind": "about-author",
+        "matter": "back",
+        "title": "About the Author",
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Mara Quill",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " is not a real person. She lives in the sample folder of an open-source book formatter, where she writes quiet stories about lists, weather and the people who keep them. This is her first book."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "8c7d1e0b-f9e4-411f-98df-78ace1ad136e",
+        "kind": "also-by",
+        "matter": "back",
+        "title": "Also by Mara Quill",
+        "includeInToc": true,
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": "center"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The Tide Tables",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": "center"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "A Short History of Wicks",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "attrs": {
+                "textAlign": "center"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Gulls, Counted",
+                  "marks": [
+                    {
+                      "type": "italic"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "updatedAt": 1767225600000
+  }
+}

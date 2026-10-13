@@ -1,0 +1,22 @@
+node_modules/
+dist/
+out/
+public/fonts/
+public/vendor/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+*.tsbuildinfo
+.claude/
+dist-electron/
+release/
+
+# Local research and private configuration are not part of the public app.
+/reports/
+/research_notes/
+.env
+.env.*
+!.env.example
+*.pem
+*.key

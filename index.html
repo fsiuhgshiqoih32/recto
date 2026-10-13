@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Recto is a free, open-source book formatter. Write or import a manuscript, pick a style, and export an EPUB and a print-ready PDF." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Recto</title>
+    <script>
+      // Apply the saved appearance before first paint (see src/ui/appearance.ts).
+      (function () {
+        var choice = 'system';
+        try { choice = localStorage.getItem('recto:appearance') || 'system'; } catch (e) {}
+        if (choice === 'system') {
+          var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          choice = dark ? 'ink' : 'paper';
+        }
+        document.documentElement.setAttribute('data-ui-theme', choice);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
