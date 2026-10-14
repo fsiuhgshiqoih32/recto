@@ -27,6 +27,9 @@ The font files are used unmodified. Each package's `LICENSE` file under `node_mo
 
 Full license text: https://openfontlicense.org
 
+Builds include copies of the installed packages' full license notices in
+`licenses/dependencies/`, alongside the app's bundled web assets.
+
 ## Libraries
 
 | Library | License | Used for |

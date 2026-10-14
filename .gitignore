@@ -3,6 +3,7 @@ dist/
 out/
 public/fonts/
 public/vendor/
+public/licenses/
 test-results/
 playwright-report/
 *.log

@@ -53,7 +53,11 @@ test('spellchecks in the book’s language', async () => {
   await expect(window.locator('.editor-page')).toHaveAttribute('lang', 'es');
   await expect(window.locator('.editor-page')).toHaveAttribute('spellcheck', 'true');
   // Default headings follow the language.
+  const contents = window.getByRole('button', { name: 'Contents', exact: true });
+  const compactNavigation = await contents.isVisible();
+  if (compactNavigation) await contents.click();
   await expect(window.locator('.nav-primary', { hasText: 'Índice' })).toBeVisible();
+  if (compactNavigation) await window.getByRole('button', { name: 'Close contents' }).click();
 
   // No Arabic dictionary: spellchecking switches off instead of leaving Spanish running.
   const enabled = () => app.evaluate(({ session }) => session.defaultSession.isSpellCheckerEnabled());

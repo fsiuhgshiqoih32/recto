@@ -2,7 +2,7 @@
 // public/ so the app can serve them, and writes src/themes/font-manifest.json:
 // every face with its subset and unicode-range, read from Fontsource's CSS.
 // Browsers then download only the subsets a book actually uses.
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,6 +56,28 @@ writeFileSync(join(root, 'src/themes/font-manifest.json'), `${JSON.stringify(man
 
 mkdirSync(join(root, 'public/vendor'), { recursive: true });
 copyFileSync(join(root, 'node_modules/pagedjs/dist/paged.polyfill.js'), join(root, 'public/vendor/paged.polyfill.js'));
+
+// Keep full third-party notices with the assets in browser and desktop builds.
+const licenseDirectory = join(root, 'public/licenses');
+mkdirSync(join(licenseDirectory, 'dependencies'), { recursive: true });
+copyFileSync(join(root, 'LICENSE'), join(licenseDirectory, 'LICENSE.txt'));
+copyFileSync(join(root, 'NOTICE.md'), join(licenseDirectory, 'NOTICE.md'));
+const modulesDirectory = join(root, 'node_modules');
+for (const entry of readdirSync(modulesDirectory, { withFileTypes: true })) {
+  if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+  const packages = entry.name.startsWith('@')
+    ? readdirSync(join(modulesDirectory, entry.name), { withFileTypes: true })
+      .filter((child) => child.isDirectory()).map((child) => `${entry.name}/${child.name}`)
+    : [entry.name];
+  for (const packageName of packages) {
+    const packageDirectory = join(modulesDirectory, packageName);
+    for (const notice of readdirSync(packageDirectory, { withFileTypes: true })) {
+      if (!notice.isFile() || !/^(licen[cs]e|copying|notice)(\.|$)/i.test(notice.name)) continue;
+      copyFileSync(join(packageDirectory, notice.name),
+        join(licenseDirectory, 'dependencies', `${packageName.replace('/', '--')}--${notice.name}`));
+    }
+  }
+}
 
 const count = Object.values(manifest).reduce((n, f) => n + f.faces.length, 0);
 console.log(`copied ${count} font files (${Object.keys(manifest).length} families) and paged.polyfill.js into public/`);

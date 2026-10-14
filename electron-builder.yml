@@ -8,6 +8,8 @@ files:
   - dist/**/*
   - dist-electron/**/*
   - package.json
+  - LICENSE
+  - NOTICE.md
   - "!**/*.map"
 asar: true
 fileAssociations:
