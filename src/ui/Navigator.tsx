@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react';
 import type { Book, BookElement, ElementKind, Matter } from '../model/book';
 import { KIND_LABEL } from '../model/book';
 import { toRoman } from '../model/numbers';
@@ -6,6 +6,7 @@ import { computeNumbering, elementLabel, themeOf } from '../render/html';
 import { Icon } from './icons';
 import { ADDABLE, type BookActions } from './useBook';
 import { DropdownMenu } from './DropdownMenu';
+import { createFlip } from './motion';
 
 const GROUPS: { matter: Matter; title: string }[] = [
   { matter: 'front', title: 'Front matter' },
@@ -28,6 +29,24 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
 
   const dragMatter = book.elements.find((el) => el.id === dragId)?.matter;
 
+  // Rows glide to their new places when chapters move, arrive or leave.
+  const nav = useRef<HTMLElement>(null);
+  const [flip] = useState(() => createFlip(() => nav.current?.closest<HTMLElement>('.sidebar') ?? nav.current));
+  const order = book.elements.map((el) => el.id).join(' ');
+  useLayoutEffect(() => flip.play(), [flip, order]);
+  // On first load the rows cascade in; rows added later arrive without a delay.
+  const cascade = useRef(new Map<string, number>());
+  const firstRender = useRef(true);
+  const bookId = useRef(book.id);
+  if (bookId.current !== book.id) {
+    bookId.current = book.id;
+    firstRender.current = true;
+  }
+  book.elements.forEach((el, index) => {
+    if (!cascade.current.has(el.id)) cascade.current.set(el.id, firstRender.current ? Math.min(index, 14) : 0);
+  });
+  firstRender.current = false;
+
   const rowText = (el: BookElement) => {
     const label = elementLabel(numbering.get(el.id), theme, book.meta.language);
     const title = el.title.trim();
@@ -42,23 +61,25 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
     const name = rowText(el).primary;
     if (!window.confirm(`Delete “${name}”? This cannot be undone.`)) return;
     const index = book.elements.findIndex((e) => e.id === el.id);
+    flip.capture();
     actions.removeElement(el.id);
     const next = book.elements[index + 1] ?? book.elements[index - 1];
     if (next && next.id !== el.id) onSelect(next.id);
   };
 
   return (
-    <nav className="navigator" aria-label="Book contents">
+    <nav ref={nav} className="navigator" aria-label="Book contents">
       {GROUPS.map(({ matter, title }) => {
         const items = book.elements.filter((el) => el.matter === matter);
         return (
           <section key={matter} className="nav-group">
-            <header className="nav-group-head">
+            <header className="nav-group-head" data-flip={`head-${matter}`}>
               <h2>{title}</h2>
               <AddMenu
                 kinds={ADDABLE[matter]}
                 onAdd={(kind) => {
                   const afterId = book.elements.find((el) => el.id === selectedId)?.matter === matter ? selectedId! : undefined;
+                  flip.capture();
                   onSelect(actions.addElement(kind, afterId).id);
                 }}
               />
@@ -70,7 +91,10 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                if (dragId && dragMatter === matter) actions.moveElement(dragId, dropTarget);
+                if (dragId && dragMatter === matter) {
+                  flip.capture();
+                  actions.moveElement(dragId, dropTarget);
+                }
                 setDragId(null);
                 setDropTarget(null);
               }}
@@ -88,6 +112,10 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
                     ]
                       .filter(Boolean)
                       .join(' ')}
+                    data-flip={el.id}
+                    // React re-inserts moved rows, which would restart the CSS entrance; settled rows skip it.
+                    onAnimationEnd={(event) => { if (event.animationName === 'row-in') event.currentTarget.dataset.settled = ''; }}
+                    style={{ '--cascade': cascade.current.get(el.id) ?? 0 } as CSSProperties}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move';
@@ -117,8 +145,8 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
                     </button>
                     <DropdownMenu label={`Actions for ${primary}`} className="icon-btn chapter-menu" align="right" button={<Icon name="more" />}>
                       {(close) => <>
-                        <button type="button" role="menuitem" disabled={i === 0} onClick={() => { close(); actions.moveBy(el.id, -1); }}><Icon name="up" />Move up</button>
-                        <button type="button" role="menuitem" disabled={i === items.length - 1} onClick={() => { close(); actions.moveBy(el.id, 1); }}><Icon name="down" />Move down</button>
+                        <button type="button" role="menuitem" disabled={i === 0} onClick={() => { close(); flip.capture(); actions.moveBy(el.id, -1); }}><Icon name="up" />Move up</button>
+                        <button type="button" role="menuitem" disabled={i === items.length - 1} onClick={() => { close(); flip.capture(); actions.moveBy(el.id, 1); }}><Icon name="down" />Move down</button>
                         <div className="menu-sep" />
                         <button type="button" role="menuitem" className="danger" onClick={() => { close(); remove(el); }}><Icon name="trash" />Delete</button>
                       </>}

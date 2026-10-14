@@ -9,13 +9,14 @@ import { PreviewPanel, type Device } from '../preview/PreviewPanel';
 import { themeOf } from '../render/html';
 import { type BookSummary, deleteBook, listBooks, loadBook, rememberOpenBook, saveBook } from '../store/db';
 import { parseBook } from '../store/file';
-import { useAppearance } from './appearance';
+import { applyTheme, resolveTheme, type UiThemeChoice, useAppearance } from './appearance';
 import { AppearanceMenu } from './AppearanceMenu';
 import { DropdownMenu } from './DropdownMenu';
 import { ElementPane } from './ElementPane';
 import { exportEpub, printBook, savePdfDesktop, saveRectoFile } from './exporters';
 import { BrandMark, Icon } from './icons';
 import { ImportDialog } from './ImportDialog';
+import { transition } from './motion';
 import { BookPanel, SectionPanel, StylePanel } from './Inspector';
 import { Navigator } from './Navigator';
 import { usePreference } from './preferences';
@@ -72,8 +73,11 @@ export function App({ initial }: { initial: Book }) {
   useEffect(() => { document.title = `${book.meta.title || 'Untitled'} · Recto`; }, [book.meta.title]);
   useEffect(() => rememberOpenBook(book.id), [book.id]);
   const notify = (message: string, kind: Notice['kind'] = 'info') => setNotice({ message, kind });
-  const switchTo = (next: Book) => { actions.replace(next); setSelectedId(firstChapterId(next)); setView('format'); closeDrawer(); };
-  const changeView = (next: WorkspaceView) => { setView(next); closeDrawer(); };
+  const switchTo = (next: Book) => transition('book', () => { actions.replace(next); setSelectedId(firstChapterId(next)); setView('format'); closeDrawer(); });
+  const changeView = (next: WorkspaceView) => transition('view', () => { setView(next); closeDrawer(); });
+  const chooseDevice = (next: Device) => transition('device', () => setDevice(next));
+  const chooseAppearance = (choice: UiThemeChoice) => transition('theme', () => { applyTheme(resolveTheme(choice)); setAppearance(choice); });
+  const togglePreview = () => transition('view', () => setShowPreview(!showPreview));
 
   const runExport = async (format: 'epub' | 'pdf') => {
     if (exportLock.current) return;
@@ -151,7 +155,7 @@ export function App({ initial }: { initial: Book }) {
         </div>
         <TabBar id="workspace" label="Workspace view" options={VIEWS} value={view} onChange={changeView} className="segmented view-switch" />
         <div className="topbar-actions">
-          <AppearanceMenu choice={appearance} resolved={resolvedTheme} onChoose={setAppearance} />
+          <AppearanceMenu choice={appearance} resolved={resolvedTheme} onChoose={chooseAppearance} />
           <DropdownMenu label="Export" align="right" className="btn btn-primary export-button" disabled={exporting} button={<><Icon name="download" />{exporting ? 'Exporting…' : 'Export'}<Icon name="chevron" size={12} /></>}>
             {(close) => <>
               <div className="menu-label">Export your book</div>
@@ -167,7 +171,7 @@ export function App({ initial }: { initial: Book }) {
         <div className="workspace-context"><span>{view === 'format' ? 'Book layout' : 'Manuscript'}</span><span className="context-divider">/</span><strong title={elementTitle}>{elementTitle}</strong></div>
         <div className="workspace-controls">
           {view === 'format' ? <button type="button" className="btn btn-quiet settings-toggle" aria-expanded={drawer === 'settings'} aria-controls="settings-panel" onClick={() => setDrawer('settings')}><Icon name="settings" />Settings</button> :
-            <button type="button" className="btn btn-quiet preview-toggle" aria-pressed={compactPanels ? drawer === 'preview' : showPreview} onClick={() => compactPanels ? setDrawer('preview') : setShowPreview(!showPreview)}><Icon name="preview" />{!compactPanels && showPreview ? 'Hide preview' : 'Preview'}</button>}
+            <button type="button" className="btn btn-quiet preview-toggle" aria-pressed={compactPanels ? drawer === 'preview' : showPreview} onClick={() => compactPanels ? setDrawer('preview') : togglePreview()}><Icon name="preview" />{!compactPanels && showPreview ? 'Hide preview' : 'Preview'}</button>}
         </div>
       </div>
       <main className="workspace" id={`workspace-panel-${view}`} role="tabpanel" aria-labelledby={`workspace-tab-${view}`}>
@@ -181,7 +185,7 @@ export function App({ initial }: { initial: Book }) {
         </section>
         <section ref={preview} className={`preview-region ${drawer === 'preview' ? 'drawer-open' : ''}`} role={drawer === 'preview' && compactPanels ? 'dialog' : undefined} aria-modal={drawer === 'preview' && compactPanels ? true : undefined} aria-label="Live preview">
           {drawerHeader('Preview')}
-          <PreviewPanel book={book} element={element} device={device} onDevice={setDevice} active={previewVisible} />
+          <PreviewPanel book={book} element={element} device={device} onDevice={chooseDevice} active={previewVisible} />
         </section>
         <aside ref={inspector} id="settings-panel" className={`inspector ${drawer === 'settings' ? 'drawer-open' : ''}`} role={drawer === 'settings' && compactPanels ? 'dialog' : undefined} aria-modal={drawer === 'settings' && compactPanels ? true : undefined} aria-label="Book settings" hidden={view !== 'format'}>
           {drawerHeader('Settings')}
@@ -197,7 +201,7 @@ export function App({ initial }: { initial: Book }) {
       </main>
       <footer className={`statusbar ${notice?.kind ?? ''}`}>
         <span className="status" role={notice?.kind === 'error' ? 'alert' : 'status'} aria-live={notice?.kind === 'error' ? 'assertive' : 'polite'}>
-          {exporting ? <span className="activity-spinner" aria-hidden="true" /> : <Icon name={notice?.kind === 'error' ? 'alert' : notice?.kind === 'success' ? 'check' : 'shield'} size={14} />}
+          {exporting ? <span className="activity-spinner" aria-hidden="true" /> : <Icon key={notice?.message ?? ''} className="status-icon" name={notice?.kind === 'error' ? 'alert' : notice?.kind === 'success' ? 'check' : 'shield'} size={14} />}
           <span key={notice?.message ?? ''} className="status-text">{notice?.message || 'Your book stays on this device.'}</span>
         </span>
         {notice && !exporting && <button className="icon-btn" type="button" aria-label="Dismiss status" onClick={() => setNotice(null)}><Icon name="close" size={14} /></button>}

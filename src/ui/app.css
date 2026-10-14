@@ -545,7 +545,11 @@ select {
 .nav-group-head h2 { margin: 0; font: italic 400 15px/1 var(--font-display); color: var(--ink-2); }
 .nav-group-head .icon-btn { width: 28px; height: 28px; }
 .nav-list { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; list-style: none; }
-.nav-item { position: relative; display: flex; align-items: center; border-radius: var(--radius-sm); transition: background-color var(--t-fast) var(--ease-out); }
+.nav-item {
+  position: relative; display: flex; align-items: center; border-radius: var(--radius-sm); transition: background-color var(--t-fast) var(--ease-out);
+  animation: row-in 280ms var(--ease-out) backwards; animation-delay: calc(var(--cascade, 0) * 22ms);
+}
+.nav-item[data-settled] { animation: none; }
 .nav-item:hover { background: var(--hover); }
 .nav-item.is-selected { background: var(--surface); box-shadow: var(--shadow-sm); }
 .nav-item.is-selected::before { content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--accent); }
@@ -744,10 +748,12 @@ select {
 .print-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); }
 .print-stage iframe { display: block; width: 100%; height: 100%; border: 0; transition: opacity var(--t-base) var(--ease-out); }
 .print-stage.is-busy iframe { opacity: 0.4; }
-/* Laying out pages takes a moment: a thin bar sweeps the top of the stage meanwhile. */
+/* Laying out pages takes a moment: a thin bar sweeps the top of the stage meanwhile.
+   It sweeps four times (under five seconds, per WCAG 2.2.2) and then rests as a steady line. */
 .print-stage.is-busy::before {
   content: ''; position: absolute; z-index: 1; top: 0; left: 0; width: 36%; height: 2px; border-radius: 2px;
-  background: var(--accent); transform: translateX(-100%); animation: progress-sweep 1.2s var(--ease-in-out) infinite;
+  background: var(--accent); transform: translateX(-100%);
+  animation: progress-sweep 1.2s var(--ease-in-out) 4, progress-rest 1ms 4.8s forwards;
 }
 
 /* The preview beside the manuscript, in the edit view. */
@@ -758,13 +764,13 @@ select {
 .app[data-view='edit'] .device-screen { max-height: 560px; }
 .app[data-view='edit'][data-preview='false'] .workspace { grid-template-columns: 248px minmax(0, 1fr); grid-template-areas: 'nav canvas'; }
 .app[data-view='edit'][data-preview='false'] .preview-region { display: none; }
-.app[data-view='format'] .preview-region { animation: view-in 200ms var(--ease-out); }
-.app[data-view='edit'] .editor-region { animation: view-in 200ms var(--ease-out); }
 
 /* ---------- Status bar ---------- */
 .statusbar { flex: none; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 12px 4px 18px; background: var(--chrome); border-top: 1px solid var(--line); }
 .statusbar .status { min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
 .status > svg { flex: none; color: var(--ink-3); }
+.status-icon { animation: icon-in 220ms var(--ease-out); }
+.statusbar.success .status-icon path { animation: check-draw 420ms 60ms var(--ease-out) backwards; }
 .statusbar.success .status > svg { color: var(--success); }
 .statusbar.error .status, .statusbar.error .status > svg { color: var(--danger); }
 .status-text { overflow-wrap: anywhere; animation: status-in 200ms var(--ease-out); }
@@ -805,14 +811,37 @@ select {
 @keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(0.97); } }
 @keyframes menu-in-above { from { opacity: 0; transform: translateY(4px) scale(0.97); } }
 @keyframes panel-in { from { opacity: 0; transform: translateY(4px); } }
-@keyframes view-in { from { opacity: 0; transform: translateY(4px); } }
 @keyframes status-in { from { opacity: 0; transform: translateY(2px); } }
+@keyframes row-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes icon-in { from { opacity: 0; transform: scale(0.8); filter: blur(2px); } }
+@keyframes check-draw { from { stroke-dasharray: 24; stroke-dashoffset: 24; } to { stroke-dasharray: 24; stroke-dashoffset: 0; } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-reveal { from { clip-path: circle(0 at var(--vt-x) var(--vt-y)); } to { clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y)); } }
 @keyframes dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
 @keyframes drawer-in-left { from { transform: translateX(-100%); } }
 @keyframes drawer-in-right { from { transform: translateX(100%); } }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes progress-sweep { to { transform: translateX(280%); } }
+@keyframes progress-rest { to { width: 100%; transform: none; opacity: 0.5; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- View transitions ----------
+   src/ui/motion.ts sets html[data-vt] while a pointer-initiated change runs:
+   view (Format/Edit, preview on/off), device, theme or book. The device
+   frame is the one shared element: it glides from the center stage to the
+   side column, or morphs from e-reader to phone. Everything else crossfades. */
+html[data-vt='view'] .device-screen, html[data-vt='device'] .device-screen { view-transition-name: device; }
+::view-transition-group(*) { animation-duration: 320ms; animation-timing-function: var(--ease-out); }
+::view-transition-old(device), ::view-transition-new(device) { height: 100%; object-fit: contain; }
+/* Center stage to side column changes the frame's proportions; the frame stretches with its box instead of banding. */
+html[data-vt='view']::view-transition-old(device), html[data-vt='view']::view-transition-new(device) { object-fit: fill; }
+::view-transition-old(root) { animation: 160ms var(--ease-out) both vt-fade-out; }
+::view-transition-new(root) { animation: 240ms 40ms var(--ease-out) both vt-fade-in; }
+/* A new app theme spreads out from where it was picked, like ink. */
+html[data-vt='theme']::view-transition-old(root), html[data-vt='theme']::view-transition-new(root) { mix-blend-mode: normal; }
+html[data-vt='theme']::view-transition-old(root) { animation: none; }
+html[data-vt='theme']::view-transition-new(root) { animation: vt-reveal 520ms var(--ease-in-out); }
 
 /* ---------- Responsive ---------- */
 @media (hover: none) {
@@ -838,6 +867,7 @@ select {
   .sidebar.drawer-open .sidebar-title { display: none; }
   .drawer-open .drawer-heading { flex: none; display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 10px 12px 10px 20px; border-bottom: 1px solid var(--line); }
   .sidebar.drawer-open .navigator { padding-top: 6px; }
+  .sidebar.drawer-open .nav-item { animation: none; }
 }
 
 @media (max-width: 899px) {
@@ -901,6 +931,7 @@ select {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   /* Without the sweep, the busy bar shows as a steady line. */
   .print-stage.is-busy::before { width: 100%; transform: none; opacity: 0.5; }
 }
