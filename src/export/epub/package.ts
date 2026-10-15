@@ -2,6 +2,8 @@ import JSZip from 'jszip';
 import type { Book, BookElement, Store } from '../../model/book';
 import { editionOf } from '../../model/book';
 import { bookCreators } from '../../model/boxset';
+import type { PageStart } from '../print/pageMap';
+import { insertPageBreaks, placePageBreaks } from './pageList';
 import { decodeDataUrl } from '../../model/dataUrl';
 
 export { decodeDataUrl };
@@ -22,6 +24,14 @@ export interface EpubOptions {
   modified?: Date;
   /** The store this edition is for: store-link blocks point at its page. */
   store?: Store;
+  /** Where each page of the print edition starts: adds the print page numbers (a page list). */
+  pageStarts?: PageStart[];
+}
+
+/** The print edition the page numbers come from, for dc:source: its ISBN, or a description. */
+export function paginationSource(book: Book): string {
+  const isbn = book.meta.isbnPrint.replace(/[^0-9Xx]/g, '');
+  return isbn.length === 10 || isbn.length === 13 ? `urn:isbn:${isbn}` : `${book.meta.title || 'Untitled'}, print edition`;
 }
 
 const CONTAINER_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -96,7 +106,7 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
   };
 
   const ornamentPath = `images/ornament-${theme.ornament}.svg`;
-  const rendered = renderBook({
+  let rendered = renderBook({
     book,
     theme,
     target: 'epub',
@@ -105,6 +115,10 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
     imageSrc,
     store: options.store,
   });
+
+  // Print page numbers: a marker where each printed page starts.
+  const pagePlan = options.pageStarts?.length ? placePageBreaks(options.pageStarts, rendered.map((r) => ({ id: r.element.id, html: r.html }))) : null;
+  if (pagePlan) rendered = rendered.map((r) => ({ ...r, html: insertPageBreaks(r.html, pagePlan.markers.get(r.element.id) ?? []) }));
 
   // Cover.
   let coverImageId: string | undefined;
@@ -171,7 +185,8 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
   const firstBody = book.elements.find((el) => el.matter === 'body');
   if (firstBody) landmarks.push({ type: 'bodymatter', href: `text/${fileNames.get(firstBody.id)}`, text: strings.beginReading });
 
-  files.push({ path: 'OEBPS/nav.xhtml', data: navDocument({ title: book.meta.title, lang, dir, heading: strings.contents, toc, landmarks }) });
+  const pageList = pagePlan?.pages.map(({ label, elementId }) => ({ label, href: `text/${fileNames.get(elementId)}` }));
+  files.push({ path: 'OEBPS/nav.xhtml', data: navDocument({ title: book.meta.title, lang, dir, heading: strings.contents, toc, landmarks, pageList }) });
   items.unshift({ id: 'nav', href: 'nav.xhtml', mediaType: 'application/xhtml+xml', properties: 'nav' });
   files.push({ path: 'OEBPS/toc.ncx', data: ncxDocument({ uid, title: book.meta.title, toc }) });
   items.unshift({ id: 'ncx', href: 'toc.ncx', mediaType: 'application/x-dtbncx+xml' });
@@ -185,8 +200,9 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
       items,
       coverImageId,
       dir,
-      accessibility: accessibilityMetadata(book, accessibilityFacts(book)),
+      accessibility: accessibilityMetadata(book, accessibilityFacts(book, { pageList: !!pagePlan })),
       creators: bookCreators(book),
+      source: pagePlan ? paginationSource(book) : undefined,
     }),
   });
   files.push({ path: 'META-INF/container.xml', data: CONTAINER_XML });

@@ -146,6 +146,8 @@ export interface BookStyle {
   paper?: 'white' | 'cream' | 'color';
   /** Box sets: the contents page lists only the volumes (ebook navigation still lists every chapter). */
   contentsVolumesOnly?: boolean;
+  /** The ebook carries the print edition's page numbers (an EPUB page list). */
+  printPageNumbers?: boolean;
 }
 
 export interface Book {

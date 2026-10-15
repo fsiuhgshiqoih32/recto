@@ -92,7 +92,7 @@ export function App({ initial }: { initial: Book }) {
     if (exportLock.current) return;
     exportLock.current = true;
     setExporting(true);
-    notify(EXPORT_PROGRESS[format], 'busy');
+    notify((format === 'epub' || format === 'stores') && book.style.printPageNumbers ? 'Laying out the print pages for the ebook’s page numbers…' : EXPORT_PROGRESS[format], 'busy');
     try {
       if (format === 'epub') {
         const bytes = await exportEpub(book);

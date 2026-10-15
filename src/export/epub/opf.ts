@@ -57,7 +57,10 @@ export function opfDocument(opts: {
   if (meta.copyrightYear) {
     lines.push(`<dc:rights>Copyright © ${esc(meta.copyrightYear)} ${esc(meta.author)}</dc:rights>`);
   }
-  if (opts.source) lines.push(`<dc:source>${esc(opts.source)}</dc:source>`);
+  if (opts.source) {
+    lines.push(`<dc:source id="pagination-source">${esc(opts.source)}</dc:source>`);
+    lines.push(`<meta refines="#pagination-source" property="source-of">pagination</meta>`);
+  }
   lines.push(`<meta property="dcterms:modified">${modifiedStamp(opts.modified)}</meta>`);
   if (opts.accessibility) lines.push(...accessibilityMetaLines(opts.accessibility, esc));
   // EPUB 2 readers find the cover through this meta.

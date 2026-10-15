@@ -47,8 +47,12 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      # One sample carries print page numbers, which come from a print layout in Chromium.
+      - run: npx playwright install --with-deps chromium
       - name: Build sample EPUBs and validate them with epubcheck-ts
         run: npm run test:epub
+        env:
+          RECTO_BROWSER: chromium
       - name: Validate with the official EPUBCheck
         run: |
           curl -sSL -o epubcheck.zip https://github.com/w3c/epubcheck/releases/download/v5.4.0/epubcheck-5.4.0.zip

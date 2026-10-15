@@ -21,6 +21,7 @@ import type { CoverWrap } from '../src/export/cover/wrap';
 import { loadHyphenator } from '../src/i18n/hyphenate';
 import { fileNameFor, parseBook } from '../src/store/file';
 import { packageOf } from '../src/themes/fonts';
+import { type PageStart, readPageStarts } from '../src/export/print/pageMap';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = 'http://recto.local';
@@ -98,6 +99,17 @@ export function renderPdf(book: Book, outPath: string, options: RenderOptions = 
     const finished = options.digital ? { ...book, style: { ...book.style, bleed: false } } : book;
     writeFileSync(outPath, await finishPdf(pdf, pdfFinish(finished, 'interior')));
     return result;
+  });
+}
+
+/** Lays the print edition out and reads where each page starts, for the ebook's page list. */
+export function printPageStarts(book: Book): Promise<PageStart[]> {
+  return withPrintPage(async (page, show) => {
+    const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
+    await layoutUntilSettled(book, (pages) => show(printDocument(book, { pages, fontUrl, pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`, hyphenate })));
+    // tsx names functions through a helper; give the page a stand-in before handing it one.
+    await page.evaluate('window.__name = function (f) { return f; }');
+    return page.evaluate(readPageStarts as unknown as () => PageStart[]);
   });
 }
 

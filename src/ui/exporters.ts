@@ -8,6 +8,7 @@ import type { EpubMessage, LayoutStats } from '../preflight/checks';
 import { fontUrl, loadFont, pagedUrl } from '../preview/assets';
 import { loadHyphenator } from '../i18n/hyphenate';
 import { fileNameFor, serializeBook } from '../store/file';
+import { type PageStart, readPageStarts } from '../export/print/pageMap';
 
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -20,10 +21,16 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/** Where the print edition's pages start, when the ebook carries its page numbers. */
+async function pageStartsFor(book: Book): Promise<PageStart[] | undefined> {
+  if (!book.style.printPageNumbers) return undefined;
+  return withPrintLayout(book, (frame) => readPageStarts(frame.contentDocument!));
+}
+
 /** Builds the EPUB and downloads it; resolves to its size in bytes. */
 export async function exportEpub(book: Book): Promise<number> {
   const { buildEpub } = await import('../export/epub/package');
-  const bytes = await buildEpub(book, { loadFont });
+  const bytes = await buildEpub(book, { loadFont, pageStarts: await pageStartsFor(book) });
   downloadBlob(new Blob([bytes as BlobPart], { type: 'application/epub+zip' }), fileNameFor(book, 'epub'));
   return bytes.length;
 }
@@ -32,7 +39,7 @@ export async function exportEpub(book: Book): Promise<number> {
 export async function exportStoreEditions(book: Book): Promise<number> {
   const { STORE_EDITIONS, buildStoreEditions } = await import('../export/epub/package');
   const base = fileNameFor(book, 'epub').replace(/\.epub$/, '');
-  const bytes = await buildStoreEditions(book, base, { loadFont });
+  const bytes = await buildStoreEditions(book, base, { loadFont, pageStarts: await pageStartsFor(book) });
   downloadBlob(new Blob([bytes as BlobPart], { type: 'application/zip' }), `${base}-store-editions.zip`);
   return STORE_EDITIONS.length;
 }
@@ -43,7 +50,7 @@ export async function exportStoreEditions(book: Book): Promise<number> {
  */
 export async function validateEpub(book: Book): Promise<{ bytes: number; messages: EpubMessage[] }> {
   const { buildEpub } = await import('../export/epub/package');
-  const data = await buildEpub(book, { loadFont });
+  const data = await buildEpub(book, { loadFont, pageStarts: await pageStartsFor(book) });
   const { EpubCheck } = await import('@likecoin/epubcheck-ts');
   const result = await EpubCheck.validate(data);
   return {

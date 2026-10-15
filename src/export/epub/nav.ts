@@ -1,4 +1,5 @@
 import { esc, escAttr } from '../../render/html';
+import { pageListNav } from './pageList';
 
 export interface TocEntry {
   text: string;
@@ -56,7 +57,16 @@ export interface Landmark {
   text: string;
 }
 
-export function navDocument(opts: { title: string; lang: string; dir: 'ltr' | 'rtl'; heading: string; toc: TocEntry[]; landmarks: Landmark[] }): string {
+export function navDocument(opts: {
+  title: string;
+  lang: string;
+  dir: 'ltr' | 'rtl';
+  heading: string;
+  toc: TocEntry[];
+  landmarks: Landmark[];
+  /** The print edition's pages, when the ebook carries its page numbers. */
+  pageList?: { label: string; href: string }[];
+}): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${escAttr(opts.lang)}" lang="${escAttr(opts.lang)}"${opts.dir === 'rtl' ? ' dir="rtl"' : ''}>
@@ -75,7 +85,7 @@ ${navList(opts.toc)}</nav>
 ${opts.landmarks.map((l) => `  <li><a epub:type="${l.type}" href="${escAttr(l.href)}">${esc(l.text)}</a></li>`).join('\n')}
 </ol>
 </nav>
-</body>
+${opts.pageList?.length ? pageListNav(opts.pageList, 'Pages') : ''}</body>
 </html>
 `;
 }

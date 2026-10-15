@@ -104,6 +104,21 @@ test('exports a valid EPUB', async ({ page }) => {
   expect(opf).toContain('<dc:title id="title">The Lamp at Harrow Point</dc:title>');
 });
 
+test('exports an EPUB with the print edition’s page numbers', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Style', exact: true }).click();
+  await page.getByText('Print page numbers in the ebook', { exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Print page numbers in the ebook' })).toBeChecked();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 120_000 }), page.getByRole('menuitem', { name: /^Export EPUB/ }).click()]);
+  const zip = await JSZip.loadAsync(readFileSync((await download.path())!));
+  const nav = await zip.file('OEBPS/nav.xhtml')!.async('string');
+  const pages = nav.match(/#page-\w+"/g) ?? [];
+  expect(pages.length).toBeGreaterThan(20);
+  expect(pages).toContain('#page-1"');
+  const opf = await zip.file('OEBPS/content.opf')!.async('string');
+  expect(opf).toContain('property="source-of">pagination</meta>');
+});
+
 test('imports a Word manuscript as a new book', async ({ page }) => {
   await page.getByRole('button', { name: 'File', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Import manuscript…' }).click();

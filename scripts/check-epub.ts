@@ -35,6 +35,14 @@ function inLanguage(language: string, text: string): Book {
   return book;
 }
 
+/** The print edition's page numbers, laid out with paged.js and marked in the ebook (needs a browser). */
+function withPageNumbers(): Book {
+  const book = richBook();
+  book.style.printPageNumbers = true;
+  book.meta.isbnPrint = '978-1-23456-789-7';
+  return book;
+}
+
 /** Every kind of block and a note, so their markup is validated too. */
 function rich(): Book {
   const book = richBook();
@@ -48,6 +56,7 @@ const books: [string, Book][] = [
   ['illustrated', illustrated()],
   ['rich', rich()],
   ['box-set', boxSetBook()],
+  ['page-numbers', withPageNumbers()],
   ['arabic', inLanguage('ar', 'كانت منارة هارو بوينت تضاء كل مساء في الخامسة والربع، وكانت آدا تكتب في الدفتر الأخضر الريح والضباب.')],
   ['japanese', inLanguage('ja', 'ハロウ岬の灯台は毎夕五時十五分に灯り、エイダは緑の帳簿に風と霧のことを書き留めた。')],
 ];

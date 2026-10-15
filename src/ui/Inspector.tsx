@@ -168,6 +168,12 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
         label="Embed fonts in the ebook"
         hint="Off lets readers use their own fonts, which most stores prefer."
       />
+      <Toggle
+        checked={!!style.printPageNumbers}
+        onChange={(printPageNumbers) => actions.updateStyle({ printPageNumbers })}
+        label="Print page numbers in the ebook"
+        hint={`Readers and screen readers can go to a page of the paperback, and Kindle shows real page numbers. EPUB export lays out the print edition first, so it takes a little longer.${style.printPageNumbers && !book.meta.isbnPrint.trim() ? ' Add the paperback ISBN in Book details to name the edition the numbers come from.' : ''}`}
+      />
     </div>
   );
 }
