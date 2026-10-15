@@ -1,7 +1,7 @@
 import { desktop } from '../desktop';
 import type { Book } from '../model/book';
 import { newId } from '../model/book';
-import { type PagedMessage, printDocument } from '../export/print/paged';
+import { type PagedMessage, pdfFinish, printDocument } from '../export/print/paged';
 import { layoutUntilSettled } from '../export/print/layout';
 import { TRIMS, pageMargins } from '../export/print/pageCss';
 import type { EpubMessage, LayoutStats } from '../preflight/checks';
@@ -69,7 +69,7 @@ export async function savePdfDesktop(book: Book, onLaidOut?: (pages: number) => 
     return laidOut;
   });
   onLaidOut?.(pages);
-  const saved = await shell.savePdf(fileNameFor(book, 'pdf'));
+  const saved = await shell.savePdf(fileNameFor(book, 'pdf'), pdfFinish(book, 'interior'));
   return saved ? { path: saved.path, pages } : null;
 }
 

@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { type Browser, type Page, chromium } from '@playwright/test';
 import type { Book } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
-import { printDocument } from '../src/export/print/paged';
+import { pdfFinish, printDocument } from '../src/export/print/paged';
+import { finishPdf } from '../src/export/print/finish';
 import { layoutUntilSettled } from '../src/export/print/layout';
 import { coverDocument } from '../src/export/cover/document';
 import type { CoverWrap } from '../src/export/cover/wrap';
@@ -91,7 +92,7 @@ export function renderPdf(book: Book, outPath: string, options: RenderOptions = 
       show(printDocument(book, { pages, fontUrl, pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`, hyphenate })),
     );
     await options.inspect?.(page);
-    writeFileSync(outPath, await page.pdf({ preferCSSPageSize: true, printBackground: true }));
+    writeFileSync(outPath, await finishPdf(await page.pdf({ preferCSSPageSize: true, printBackground: true }), pdfFinish(book, 'interior')));
     return result;
   });
 }
@@ -100,7 +101,7 @@ export function renderPdf(book: Book, outPath: string, options: RenderOptions = 
 export function renderCoverPdf(book: Book, wrap: CoverWrap, background: string, outPath: string): Promise<void> {
   return withPrintPage(async (page, show) => {
     await show(coverDocument(book, wrap, { fontUrl, background }));
-    writeFileSync(outPath, await page.pdf({ preferCSSPageSize: true, printBackground: true }));
+    writeFileSync(outPath, await finishPdf(await page.pdf({ preferCSSPageSize: true, printBackground: true }), pdfFinish(book, 'cover')));
   });
 }
 

@@ -3,6 +3,7 @@ import type { Book } from '../model/book';
 import { coverDocument } from '../export/cover/document';
 import { type CoverWrap, templateSvg } from '../export/cover/wrap';
 import { fontUrl } from '../preview/assets';
+import { pdfFinish } from '../export/print/paged';
 import { fileNameFor } from '../store/file';
 import { downloadBlob } from './exporters';
 
@@ -81,7 +82,7 @@ export async function printCover(book: Book, wrap: CoverWrap, background: string
   const name = fileNameFor(book, 'pdf').replace(/\.pdf$/, '-cover.pdf');
   if (desktop) {
     await desktop.layoutPdf(coverDocument(book, wrap, { fontUrl, background }));
-    const saved = await desktop.savePdf(name);
+    const saved = await desktop.savePdf(name, pdfFinish(book, 'cover'));
     return saved ?? 'canceled';
   }
   const frame = document.createElement('iframe');

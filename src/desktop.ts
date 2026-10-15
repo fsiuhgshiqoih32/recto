@@ -1,3 +1,5 @@
+import type { PdfFinish } from './export/print/finish';
+
 // The bridge the Electron shell (electron/preload.ts) exposes. Undefined in a
 // plain browser, where Recto falls back to web APIs.
 
@@ -14,8 +16,8 @@ export interface RectoDesktop {
   setSpellcheckLanguages(codes: string[]): Promise<{ applied: string[] }>;
   /** Lays out a print document (from printDocument) off-screen; returns its page count. */
   layoutPdf(html: string): Promise<{ pages: number }>;
-  /** Asks where to save, then writes the last laid-out document as a PDF. Null if cancelled. */
-  savePdf(fileName: string): Promise<{ path: string } | null>;
+  /** Asks where to save, then writes the last laid-out document as a PDF, finished with metadata and page boxes. Null if cancelled. */
+  savePdf(fileName: string, finish?: PdfFinish): Promise<{ path: string } | null>;
   cancelPdf(): Promise<void>;
   /** A .recto file the app was launched with (double-clicked in the file manager), if any. */
   takePendingFile(): Promise<OpenedFile | null>;

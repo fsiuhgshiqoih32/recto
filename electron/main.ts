@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type PdfFinish, finishPdf } from '../src/export/print/finish';
 import {
   BrowserWindow,
   type ContextMenuParams,
@@ -244,7 +245,7 @@ function registerIpc(): void {
     return { pages };
   });
 
-  ipcMain.handle('pdf:save', async (_event, fileName: string) => {
+  ipcMain.handle('pdf:save', async (_event, fileName: string, finish?: PdfFinish) => {
     if (!printWindow || printWindow.isDestroyed()) throw new Error('Nothing has been laid out yet.');
     const choice = await dialog.showSaveDialog(mainWindow!, {
       title: 'Export PDF',
@@ -256,8 +257,10 @@ function registerIpc(): void {
       return null;
     }
     const started = Date.now();
-    const pdf = await printWindow.webContents.printToPDF({ preferCSSPageSize: true, printBackground: true });
+    let pdf: Uint8Array = await printWindow.webContents.printToPDF({ preferCSSPageSize: true, printBackground: true });
     debug('printToPDF took', Date.now() - started, 'ms');
+    // Metadata and the TrimBox/BleedBox printers use, which printToPDF can't write.
+    if (finish) pdf = await finishPdf(pdf, finish);
     await writeFile(choice.filePath, pdf);
     closePrintWindow();
     return { path: choice.filePath };

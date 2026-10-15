@@ -53,6 +53,7 @@
     "@fontsource/noto-serif-thai": "5.3.0",
     "@fontsource/source-serif-4": "5.3.1",
     "@likecoin/epubcheck-ts": "0.7.0",
+    "@pdfme/pdf-lib": "6.1.13",
     "@playwright/test": "1.64.0",
     "@tiptap/core": "2.27.3",
     "@tiptap/extension-image": "2.27.3",

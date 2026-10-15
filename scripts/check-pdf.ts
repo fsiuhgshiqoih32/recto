@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 import { OPS, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { PDFDocument } from '@pdfme/pdf-lib';
 import { renderCoverPdf, renderPdf } from '../cli/pdf';
 import { coverWrap } from '../src/export/cover/wrap';
 import { richBook } from './fixtures';
@@ -285,6 +286,15 @@ rich content with bleed: ${count} pages → ${path}`);
   const cited = pages.find((p) => squash(p.items.map((it) => it.str).join('')).includes(squash('The ledger recorded the wind')));
   const foot = cited ? squash(cited.items.filter((it) => it.y > 0.7).map((it) => it.str).join('')) : '';
   check(foot.includes(squash('1. In knots, from 1931 on')) && foot.includes(squash('2. Measured by how many')), 'both footnotes sit at the foot of the page that cites them, numbered 1 and 2');
+
+  // The TrimBox marks the cut: bleed on the right of right-hand pages, the left of left-hand ones.
+  const pdf = await PDFDocument.load(readFileSync(path));
+  const box = (i: number) => pdf.getPage(i).getTrimBox();
+  const b = 0.125 * 72;
+  const [right, left] = [box(0), box(1)];
+  check(Math.abs(right.x) < 0.1 && Math.abs(left.x - b) < 0.1 && Math.abs(right.y - b) < 0.1 && Math.abs(right.width - t.width * 72) < 0.6 && Math.abs(right.height - t.height * 72) < 0.6,
+    `TrimBox is the ${t.width} × ${t.height} in trim, offset from the bleed on the outside edge`);
+  check(pdf.getTitle() === book.meta.title && pdf.getAuthor() === book.meta.author, 'the PDF carries the title and author');
 }
 
 // A paperback wrap cover: one page at the exact wrap size, with the spine and back text.
@@ -304,6 +314,8 @@ cover: ${wrap.width} × ${wrap.height} in → ${path}`);
   const text = squash(page.items.map((it) => it.str).join(''));
   check(text.includes(squash('A lighthouse keeper inherits a ledger')), 'the back cover carries the description');
   check(text.includes(squash(book.meta.title)) && text.includes(squash(book.meta.author)), 'the spine and back carry the title and author');
+  const trimBox = (await PDFDocument.load(readFileSync(path))).getPage(0).getTrimBox();
+  check(Math.abs(trimBox.x - 9) < 0.1 && Math.abs(trimBox.width - (wrap.width - 0.25) * 72) < 0.6, 'the cover’s TrimBox sits 0.125 in inside the bleed on every side');
 }
 
 if (failures.length) {

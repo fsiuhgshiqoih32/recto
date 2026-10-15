@@ -7,6 +7,8 @@ import { anchorId, esc, escAttr, renderBook, themeOf } from '../../render/html';
 import { ORNAMENTS } from '../../themes/ornaments';
 import { languageInfo } from '../../i18n/languages';
 import { breaksScript } from './breaks';
+import type { PdfFinish } from './finish';
+import { BLEED } from '../cover/wrap';
 import { estimatePages, printCss, spreadScreenCss } from './pageCss';
 
 export interface PrintDocumentOptions {
@@ -24,6 +26,18 @@ export interface PrintDocumentOptions {
   renderId?: string;
   /** Hyphenator for the book's language (see i18n/hyphenate). */
   hyphenate?: (text: string) => string;
+}
+
+/** Metadata and page boxes to add to a printed PDF (see finish.ts). */
+export function pdfFinish(book: Book, kind: PdfFinish['kind']): PdfFinish {
+  return {
+    title: book.meta.title,
+    author: book.meta.author,
+    language: book.meta.language || 'en',
+    kind,
+    bleed: kind === 'cover' ? BLEED : book.style.bleed ? BLEED : 0,
+    rtl: languageInfo(book.meta.language).dir === 'rtl',
+  };
 }
 
 /** Message posted to the parent window once paged.js has finished. */
