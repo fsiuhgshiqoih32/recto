@@ -8,6 +8,7 @@ import { TRIMS, pageMargins, trimLabel } from '../export/print/pageCss';
 import { pageRange, printersFor } from '../export/print/trims';
 import { imageInfo } from './images';
 import { isbn13, isbnProblem } from './isbn';
+import { nameVariants } from './names';
 
 export type Severity = 'error' | 'warning' | 'info' | 'ok';
 export type Area = 'details' | 'text' | 'print' | 'ebook' | 'accessibility';
@@ -109,6 +110,16 @@ export function checkBook(book: Book): Finding[] {
     });
   }
 
+  const times = (n: number) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+  for (const v of nameVariants(book).slice(0, 12)) {
+    findings.push({
+      area: 'text',
+      severity: 'info',
+      title: `“${v.variant}” (${times(v.variantCount)}) or “${v.name}” (${times(v.count)})?`,
+      detail: 'A name spelled two ways. If both are right, ignore this.',
+      elementId: v.elementId,
+    });
+  }
   const block = textBlock(book);
   let undescribed = 0;
   for (const el of book.elements) {
@@ -120,8 +131,8 @@ export function checkBook(book: Book): Finding[] {
       }
     }
     const figures = images(el.content.content);
-    // Part pages are often just a title.
-    if (!GENERATED_KINDS.has(el.kind) && el.kind !== 'part' && !text.trim() && !figures.length) {
+    // Part and volume pages are often just a title.
+    if (!GENERATED_KINDS.has(el.kind) && el.kind !== 'part' && el.kind !== 'volume' && !text.trim() && !figures.length) {
       findings.push({ area: 'text', severity: 'warning', title: `“${elementName(el)}” is empty`, elementId: el.id });
     }
     const missing = figures.filter((img) => !img.attrs.alt?.trim()).length;
