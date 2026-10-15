@@ -8,7 +8,7 @@ import { readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { basename, join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type PdfFinish, finishPdf } from '../src/export/print/finish';
-import { type Ghostscript, convertToPdfx, findGhostscript } from '../src/export/print/pdfx';
+import { type Ghostscript, convertToPdfx, findGhostscript, pdfxStandard } from '../src/export/print/pdfx';
 import { findKindlePreviewer, openInKindlePreviewer } from './kindle';
 import { checkForUpdates } from './updates';
 import {
@@ -275,7 +275,7 @@ function registerIpc(): void {
     const gs = options?.pdfx ? await findGs() : null;
     if (options?.pdfx && !gs) throw new Error('Ghostscript isn’t installed, so Recto can’t make PDF/X files.');
     const choice = await dialog.showSaveDialog(mainWindow!, {
-      title: options?.pdfx ? 'Export PDF/X-1a' : 'Export PDF',
+      title: gs && options?.pdfx ? `Export ${pdfxStandard(gs.version)}` : 'Export PDF',
       defaultPath: join(app.getPath('documents'), fileName),
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
@@ -337,7 +337,10 @@ function registerIpc(): void {
     return { path, modified: Math.round((await stat(path)).mtimeMs) };
   });
 
-  ipcMain.handle('tools:find', async () => ({ kindlePreviewer: !!findKindlePreviewer(), ghostscript: (await findGs())?.version ?? null }));
+  ipcMain.handle('tools:find', async () => {
+    const gs = await findGs();
+    return { kindlePreviewer: !!findKindlePreviewer(), ghostscript: gs ? { version: gs.version, standard: pdfxStandard(gs.version) } : null };
+  });
 
   ipcMain.handle('kindle:open', async (_event, bytes: Uint8Array, fileName: string) => {
     const previewer = findKindlePreviewer();

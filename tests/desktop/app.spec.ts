@@ -26,7 +26,8 @@ async function launchWith(env: Record<string, string>, ...files: string[]) {
     env: { ...process.env, RECTO_USER_DATA: profile, ...env },
   });
   window = await app.firstWindow();
-  await expect(window.locator('.book-title')).toContainText(/\w/);
+  // A packaged app's first start on a CI machine can take a while.
+  await expect(window.locator('.book-title')).toContainText(/\w/, { timeout: 30_000 });
 }
 
 test.afterEach(async () => {
@@ -248,13 +249,13 @@ test('exports PDF/X-1a through an installed Ghostscript', async () => {
     dialog.showSaveDialog = (async () => ({ canceled: false, filePath: path })) as typeof dialog.showSaveDialog;
   }, out);
   await window.getByRole('button', { name: 'Export', exact: true }).click();
-  await window.getByRole('menuitem', { name: /^PDF\/X-1a/ }).click();
-  await expect(window.locator('.status')).toContainText('PDF/X-1a', { timeout: 120_000 });
+  await window.getByRole('menuitem', { name: /^PDF\/X-(1a|3)/ }).click();
+  await expect(window.locator('.status')).toContainText(/Saved \d+-page PDF\/X-(1a|3)/, { timeout: 120_000 });
   const bytes = readFileSync(out);
   expect(bytes.subarray(0, 8).toString()).toBe('%PDF-1.3');
   const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
   // No object streams, so the document info is readable as it stands.
-  expect(bytes.toString('latin1')).toMatch(/\/GTS_PDFXVersion\s*\(PDF\/X-1/);
+  expect(bytes.toString('latin1')).toMatch(/\/GTS_PDFXVersion\s*\(PDF\/X-[13]/);
   expect(String(pdf.catalog.get(PDFName.of('OutputIntents')))).toBeTruthy();
   expect(pdf.getPages().every((page) => page.node.get(PDFName.of('TrimBox')))).toBe(true);
 });

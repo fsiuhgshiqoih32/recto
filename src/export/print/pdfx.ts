@@ -15,10 +15,22 @@ export interface Ghostscript {
   version: string;
 }
 
+export type PdfxStandard = 'PDF/X-1a' | 'PDF/X-3';
+
+/**
+ * What this Ghostscript can write. PDF/X-1a arrived in 10.05 (March 2025);
+ * older versions write PDF/X-3, which IngramSpark accepts too. With every
+ * colour converted to grey or CMYK, the two differ only in what they declare.
+ */
+export function pdfxStandard(version: string): PdfxStandard {
+  const [major, minor] = version.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  return major > 10 || (major === 10 && minor >= 5) ? 'PDF/X-1a' : 'PDF/X-3';
+}
+
 function run(file: string, args: string[], timeout: number): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     execFile(file, args, { timeout, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
-      if (error) reject(Object.assign(error, { stderr: String(stderr) }));
+      if (error) reject(Object.assign(error, { stdout: String(stdout), stderr: String(stderr) }));
       else resolve({ stdout: String(stdout), stderr: String(stderr) });
     });
   });
@@ -67,10 +79,11 @@ function psString(text: string): string {
  * intent naming a registered printing condition (CGATS TR 001, US web offset),
  * so no ICC profile has to travel with the file.
  */
-export function pdfxDefinition(title: string): string {
+export function pdfxDefinition(title: string, standard: PdfxStandard = 'PDF/X-1a'): string {
+  const version = standard === 'PDF/X-1a' ? '/GTS_PDFXVersion (PDF/X-1:2001) /GTS_PDFXConformance (PDF/X-1a:2001)' : '/GTS_PDFXVersion (PDF/X-3:2002)';
   return `%!PS
-% Written by Recto for Ghostscript's pdfwrite (-dPDFX=1).
-[ /GTS_PDFXVersion (PDF/X-1:2001) /GTS_PDFXConformance (PDF/X-1a:2001) /Title ${psString(title || 'Untitled')} /Trapped /False /DOCINFO pdfmark
+% Written by Recto for Ghostscript's pdfwrite (${standard}).
+[ ${version} /Title ${psString(title || 'Untitled')} /Trapped /False /DOCINFO pdfmark
 [ /_objdef {RectoOutputIntent} /type /dict /OBJ pdfmark
 [ {RectoOutputIntent} <<
   /Type /OutputIntent
@@ -91,8 +104,9 @@ export interface PdfxOptions {
 }
 
 /**
- * Converts a finished print PDF to PDF/X-1a. The result still needs its page
- * boxes and metadata put back (finishPdf), because pdfwrite rewrites them.
+ * Converts a finished print PDF to PDF/X-1a (PDF/X-3 with Ghostscript before
+ * 10.05). The result still needs its page boxes and metadata put back
+ * (finishPdf), because pdfwrite rewrites them.
  */
 export async function convertToPdfx(gs: Ghostscript, pdf: Uint8Array, options: PdfxOptions): Promise<Uint8Array> {
   const dir = await mkdtemp(join(tmpdir(), 'recto-pdfx-'));
@@ -101,13 +115,15 @@ export async function convertToPdfx(gs: Ghostscript, pdf: Uint8Array, options: P
     const output = join(dir, 'out.pdf');
     const definition = join(dir, 'pdfx.ps');
     await writeFile(input, pdf);
-    await writeFile(definition, pdfxDefinition(options.title), 'latin1');
+    const standard = pdfxStandard(gs.version);
+    await writeFile(definition, pdfxDefinition(options.title, standard), 'latin1');
     const model = options.gray ? 'Gray' : 'CMYK';
     try {
       await run(
         gs.path,
         [
-          '-dPDFX=1', '-dBATCH', '-dNOPAUSE', '-dQUIET', '-dNOOUTERSAVE',
+          // Before 10.05, -dPDFX is a plain switch (PDF/X-3); from 10.05 it takes the level.
+          standard === 'PDF/X-1a' ? '-dPDFX=1' : '-dPDFX', '-dBATCH', '-dNOPAUSE', '-dNOOUTERSAVE',
           '-sDEVICE=pdfwrite', `-sColorConversionStrategy=${model}`, `-dProcessColorModel=/Device${model}`,
           // Keep images sharp: printers want 300 ppi, and Recto checks that before export.
           '-dDownsampleColorImages=false', '-dDownsampleGrayImages=false', '-dDownsampleMonoImages=false',
@@ -117,7 +133,8 @@ export async function convertToPdfx(gs: Ghostscript, pdf: Uint8Array, options: P
         10 * 60_000,
       );
     } catch (error) {
-      const detail = (error as { stderr?: string }).stderr?.trim().split('\n').slice(-3).join(' ') || (error as Error).message;
+      const output = `${(error as { stdout?: string }).stdout ?? ''}\n${(error as { stderr?: string }).stderr ?? ''}`.trim();
+      const detail = output.split('\n').filter((line) => line.trim()).slice(-12).join(' ').slice(-1200) || (error as Error).message;
       throw new Error(`Ghostscript couldn’t make the PDF/X file: ${detail}`);
     }
     return new Uint8Array(await readFile(output));

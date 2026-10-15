@@ -30,8 +30,8 @@ export type SaveResult = { path: string; modified: number } | { conflict: { modi
 
 export interface DesktopTools {
   kindlePreviewer: boolean;
-  /** The installed Ghostscript's version, or null. */
-  ghostscript: string | null;
+  /** The installed Ghostscript, and the PDF/X it can make; null without one. */
+  ghostscript: { version: string; standard: 'PDF/X-1a' | 'PDF/X-3' } | null;
 }
 
 export interface RectoDesktop {

@@ -113,8 +113,9 @@ export function App({ initial }: { initial: Book }) {
       }
       else if (desktop) {
         const kind = format === 'reading' ? 'reading' : format === 'pdfx' ? 'pdfx' : 'print';
-        const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. ${kind === 'pdfx' ? 'Choose where to save; Ghostscript then converts it to PDF/X-1a…' : 'Choose where to save the PDF…'}`, 'busy'), kind);
-        notify(saved ? `Saved ${saved.pages}-page ${kind === 'pdfx' ? 'PDF/X-1a' : 'PDF'} to ${saved.path}` : 'PDF export canceled.', saved ? 'success' : 'info');
+        const standard = tools?.ghostscript?.standard ?? 'PDF/X';
+        const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. ${kind === 'pdfx' ? `Choose where to save; Ghostscript then converts it to ${standard}…` : 'Choose where to save the PDF…'}`, 'busy'), kind);
+        notify(saved ? `Saved ${saved.pages}-page ${kind === 'pdfx' ? standard : 'PDF'} to ${saved.path}` : 'PDF export canceled.', saved ? 'success' : 'info');
       } else {
         await printBook(book, (pages) => notify(`Laid out ${pages} pages. Opening the print dialog…`, 'busy'), format === 'reading');
         notify('Print dialog opened. Choose “Save as PDF” to save your book.', 'success');
@@ -222,7 +223,7 @@ export function App({ initial }: { initial: Book }) {
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdf'); }}><Icon name="printer" /><span>{desktop ? 'Export PDF' : 'Print PDF'}<small>{desktop ? 'Save a print-ready PDF' : 'Print or save as PDF'}</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('reading'); }}><Icon name="file" /><span>PDF for reading<small>{desktop ? 'Live links and bookmarks, for direct sales' : 'Live links, for direct sales'}</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('docx'); }}><Icon name="edit" /><span>Word document<small>For an editor, or KDP’s Word upload</small></span></button>
-              {tools?.ghostscript && <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdfx'); }}><Icon name="printer" /><span>PDF/X-1a<small>{book.style.paper === 'color' ? 'CMYK' : 'Greyscale'}, for IngramSpark (Ghostscript {tools.ghostscript})</small></span></button>}
+              {tools?.ghostscript && <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdfx'); }}><Icon name="printer" /><span>{tools.ghostscript.standard}<small>{book.style.paper === 'color' ? 'CMYK' : 'Greyscale'}, for IngramSpark (Ghostscript {tools.ghostscript.version})</small></span></button>}
               {tools?.kindlePreviewer && <button type="button" role="menuitem" onClick={() => { close(); void runExport('kindle'); }}><Icon name="preview" /><span>Preview in Kindle Previewer<small>Amazon’s own reader preview</small></span></button>}
             </>}
           </DropdownMenu>

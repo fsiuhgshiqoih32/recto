@@ -15,7 +15,7 @@ import { renderCoverPdf, renderPdf } from '../cli/pdf';
 import { coverWrap } from '../src/export/cover/wrap';
 import { boxSetBook, richBook } from './fixtures';
 import { volumeMembers } from '../src/model/boxset';
-import { findGhostscript } from '../src/export/print/pdfx';
+import { findGhostscript, pdfxStandard } from '../src/export/print/pdfx';
 import type { ThemeId, TrimId } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
 import { TRIMS, pageMargins, trimLabel } from '../src/export/print/pageCss';
@@ -324,27 +324,34 @@ rich content with bleed: ${count} pages → ${path}`);
   check(after.includes(squash('Ada Wren')) && after.includes(squash('The Second Lamp')), 'volume two’s running heads name its author and title');
 }
 
-// PDF/X-1a through Ghostscript, when it's installed (CI installs it on Linux).
+// PDF/X through Ghostscript, when it's installed (CI installs it on Linux): X-1a from 10.05, X-3 before.
 const gs = await findGhostscript();
 if (gs) {
   const book = richBook();
   book.style.bleed = true;
   const path = join('out', 'rich-pdfx.pdf');
-  await renderPdf(book, path, { pdfx: true });
+  const standard = pdfxStandard(gs.version);
+  try {
+    await renderPdf(book, path, { pdfx: true });
+  } catch (error) {
+    // Say why in the CI summary, not just in the log.
+    if (process.env.GITHUB_ACTIONS) console.log(`::error title=PDF/X with Ghostscript ${gs.version}::${String(error).replace(/\n/g, ' ')}`);
+    throw error;
+  }
   const bytes = readFileSync(path);
   const text = bytes.toString('latin1');
   const pages = await readPdf(path);
   const t = TRIMS[book.style.trim];
-  console.log(`\nPDF/X-1a with Ghostscript ${gs.version}: ${pages.length} pages → ${path}`);
-  check(text.startsWith('%PDF-1.3'), 'the file is PDF 1.3, as PDF/X-1a requires');
-  check(/\/GTS_PDFXVersion\s*\(PDF\/X-1/.test(text) && /\/OutputConditionIdentifier\s*\(CGATS TR 001\)/.test(text), 'it declares PDF/X-1a and its output intent');
+  console.log(`\n${standard} with Ghostscript ${gs.version}: ${pages.length} pages → ${path}`);
+  check(text.startsWith('%PDF-1.3'), `the file is PDF 1.3, as ${standard} requires`);
+  check(new RegExp(`/GTS_PDFXVersion\\s*\\(PDF/X-${standard === 'PDF/X-1a' ? '1' : '3'}`).test(text) && /\/OutputConditionIdentifier\s*\(CGATS TR 001\)/.test(text), `it declares ${standard} and its output intent`);
   const rgb = [...new Set(pages.flatMap((p) => [...p.colors]))].filter((c) => c.startsWith('#') && !/^#([0-9a-f]{2})\1\1$/.test(c));
   check(rgb.length === 0, `every colour is grey or CMYK${rgb.length ? ` (found ${rgb.slice(0, 4).join(', ')})` : ''}`);
   const pdf = await PDFDocument.load(bytes);
   const trim = pdf.getPage(0).getTrimBox();
   check(Math.abs(trim.width - t.width * 72) < 0.6 && Math.abs(trim.height - t.height * 72) < 0.6, 'the TrimBox still marks the trim after conversion');
 } else {
-  console.log('\nPDF/X-1a: skipped (Ghostscript is not installed)');
+  console.log('\nPDF/X: skipped (Ghostscript is not installed)');
 }
 
 // A PDF for reading: live contents links and bookmarks.
