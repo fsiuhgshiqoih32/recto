@@ -50,5 +50,10 @@ export async function finishPdf(bytes: Uint8Array, finish: PdfFinish): Promise<U
     if (finish.rtl) doc.catalog.getOrCreateViewerPreferences().setReadingDirection(ReadingDirection.R2L);
   }
   // No object streams: they're a PDF 1.5 feature some print workflows (and PDF/X-1a) don't accept.
-  return doc.save({ useObjectStreams: false });
+  const out = await doc.save({ useObjectStreams: false });
+  // pdf-lib always writes a %PDF-1.7 header. Keep the original version (PDF/X-1a must say 1.3):
+  // the header is the same length, so no offsets move.
+  const version = /^%PDF-1\.(\d)/.exec(new TextDecoder().decode(bytes.subarray(0, 8)))?.[1];
+  if (version && out[0] === 0x25 && new TextDecoder().decode(out.subarray(0, 8)) === '%PDF-1.7') out[7] = version.charCodeAt(0);
+  return out;
 }
