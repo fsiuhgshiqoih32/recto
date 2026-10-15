@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { chapterLabel } from '../i18n/labels';
 import { languageInfo } from '../i18n/languages';
 import { LanguagePicker } from './LanguagePicker';
-import type { Binding, Book, BookElement, BookMeta, TrimId } from '../model/book';
+import type { Binding, Book, BookElement, BookMeta, Edition, TrimId } from '../model/book';
 import { GENERATED_KINDS, KIND_LABEL, wordCount } from '../model/book';
 import { Icon } from './icons';
 import { TRIMS, estimatePages, kdpMinInside, trimLabel } from '../export/print/pageCss';
@@ -142,6 +142,12 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
       <h3 className="panel-heading">Text</h3>
       <Toggle checked={style.dropCaps} onChange={(dropCaps) => actions.updateStyle({ dropCaps })} label="Drop caps" hint="Used by styles that have them." />
       <Toggle
+        checked={!!style.largePrint}
+        onChange={(largePrint) => actions.updateStyle({ largePrint })}
+        label="Large-print edition"
+        hint="16 pt type, ragged right, no hyphenation; best at 6 × 9 in or larger. A large-print paperback needs its own ISBN."
+      />
+      <Toggle
         checked={style.embedFonts}
         onChange={(embedFonts) => actions.updateStyle({ embedFonts })}
         label="Embed fonts in the ebook"
@@ -165,6 +171,13 @@ export function SectionPanel({ book, element, actions, onEdit, onShowBookDetails
     {element.kind === 'chapter' && <Field label="Section subtitle"><input value={element.subtitle ?? ''} lang={book.meta.language} dir="auto" onChange={(event) => update({ subtitle: event.target.value })} placeholder="Optional" /></Field>}
     {chapterLike && <Toggle checked={element.numbered !== false} onChange={(numbered) => update({ numbered })} label="Numbered" hint="Chapter numbers update automatically." />}
     {element.kind !== 'title-page' && <Toggle checked={element.includeInToc} onChange={(includeInToc) => update({ includeInToc })} label="Listed in contents" />}
+    <Field label="Include in" hint={element.include === 'ebook' ? 'Left out of the print edition: a newsletter sign-up or store links, for example.' : element.include === 'print' ? 'Left out of the ebook: an order form or a printed-edition note, for example.' : undefined}>
+      <select value={element.include ?? 'both'} onChange={(event) => update({ include: event.target.value === 'both' ? undefined : (event.target.value as Edition) })}>
+        <option value="both">Ebook and print</option>
+        <option value="ebook">Ebook only</option>
+        <option value="print">Print only</option>
+      </select>
+    </Field>
     {headless && <p className="field-hint">This page prints without a heading.</p>}
     {GENERATED_KINDS.has(element.kind) ? <div className="section-note">
       <p>{element.kind === 'toc' ? 'Recto generates this page from sections listed in contents. Print editions include page numbers; ebooks include links.' : 'Recto generates this page from your book details.'}</p>

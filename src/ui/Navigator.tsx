@@ -48,6 +48,12 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
   firstRender.current = false;
 
   const rowText = (el: BookElement) => {
+    const { primary, secondary } = rowTitles(el);
+    // Sections in one edition only say so.
+    const only = el.include === 'ebook' ? 'Ebook only' : el.include === 'print' ? 'Print only' : '';
+    return { primary, secondary: [secondary, only].filter(Boolean).join(' · ') };
+  };
+  const rowTitles = (el: BookElement) => {
     const label = elementLabel(numbering.get(el.id), theme, book.meta.language);
     const title = el.title.trim();
     if (el.kind === 'chapter' || el.kind === 'part') {

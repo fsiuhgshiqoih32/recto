@@ -2,6 +2,7 @@
 // document drives the in-app spread preview, "Save as PDF" and the headless CLI.
 
 import type { Book } from '../../model/book';
+import { editionOf } from '../../model/book';
 import { anchorId, esc, escAttr, renderBook, themeOf } from '../../render/html';
 import { ORNAMENTS } from '../../themes/ornaments';
 import { languageInfo } from '../../i18n/languages';
@@ -32,7 +33,8 @@ export interface PagedMessage {
   pages: number;
 }
 
-export function printDocument(book: Book, opts: PrintDocumentOptions): string {
+export function printDocument(source: Book, opts: PrintDocumentOptions): string {
+  const book = editionOf(source, 'print');
   const theme = themeOf(book);
   const { dir } = languageInfo(book.meta.language);
   const pages = opts.pages ?? estimatePages(book);
@@ -42,7 +44,8 @@ export function printDocument(book: Book, opts: PrintDocumentOptions): string {
     target: 'print',
     hrefFor: (el) => `#${anchorId(el)}`,
     ornament: (id) => ORNAMENTS[id],
-    hyphenate: opts.hyphenate,
+    // Large print sets ragged right with no hyphenation.
+    hyphenate: book.style.largePrint ? undefined : opts.hyphenate,
     links: false,
   });
   const firstBody = book.elements.find((el) => el.matter === 'body');

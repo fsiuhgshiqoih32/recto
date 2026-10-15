@@ -2,7 +2,7 @@
 // stylesheet that paged.js turns into pages.
 
 import type { Book } from '../../model/book';
-import { textStats } from '../../model/book';
+import { editionOf, textStats } from '../../model/book';
 import { themeOf } from '../../render/html';
 import { languageInfo } from '../../i18n/languages';
 import { baseCss, languageCss } from '../../themes';
@@ -34,20 +34,37 @@ export function pageMargins(trim: Trim, pages: number): Margins {
   return { top: 0.75 + extra, bottom: 0.8 + extra, outside: trim.outside, inside: +(kdpMinInside(pages) + 0.3).toFixed(3) };
 }
 
+/** Large-print editions set body text at 16 pt, the usual minimum for large print. */
+export const LARGE_PRINT_SIZE = 16;
+
+/** Body text size in points. */
+export function bodySize(book: Book): number {
+  return book.style.largePrint ? Math.max(LARGE_PRINT_SIZE, TRIMS[book.style.trim].fontSize) : TRIMS[book.style.trim].fontSize;
+}
+
 /** Rough page count before layout, used to pick the first gutter. */
-export function estimatePages(book: Book): number {
+export function estimatePages(source: Book): number {
+  const book = editionOf(source, 'print');
   const trim = TRIMS[book.style.trim];
+  const size = bodySize(book);
   const m = pageMargins(trim, 100);
   const width = trim.width - m.inside - m.outside;
   const height = trim.height - m.top - m.bottom;
-  const wordsPerPage = width * height * 9.5 * (11 / trim.fontSize) ** 2;
+  const wordsPerPage = width * height * 9.5 * (11 / size) ** 2 * (book.style.largePrint ? 0.88 : 1);
   // CJK sets one character per em, on lines 1.8 em apart (see languageCss).
-  const em = trim.fontSize / 72;
+  const em = size / 72;
   const charsPerPage = Math.floor(width / em) * Math.floor(height / (em * 1.8));
   const { words, cjk } = textStats(book);
   // Each element opens on a fresh page and often leaves a blank verso.
   return Math.ceil(words / wordsPerPage + cjk / charsPerPage + book.elements.length * 1.5);
 }
+
+/** Large print: ragged right, no hyphenation, open leading (after the APH and ALLi guidance). */
+const LARGE_PRINT_CSS = `
+body { line-height: 1.5; }
+.el p, .el p.opener, .el p.first { text-align: left; hyphens: manual; -webkit-hyphens: manual; }
+.dropcap { font-size: 3.4em; }
+`;
 
 function cssString(text: string): string {
   return `"${text.replace(/["\\]/g, '\\$&').replace(/\n/g, ' ')}"`;
@@ -94,7 +111,7 @@ ${theme.css}
 @page part { ${blank} }
 @page :blank { ${blank} }
 @page chapter:first { ${blank} }
-html { font-size: ${trim.fontSize}pt; }
+html { font-size: ${bodySize(book)}pt; }
 body { margin: 0; color: #000; line-height: 1.42; font-family: var(--body-font); }
 .el p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; widows: 2; orphans: 2; }
 .el p.align-center { text-align: center; }
@@ -117,6 +134,7 @@ body { margin: 0; color: #000; line-height: 1.42; font-family: var(--body-font);
 .toc-list span.toc-entry::after { content: target-counter(attr(data-target), page); margin-inline-start: auto; }
 .toc-list a.toc-entry::after { content: target-counter(attr(href), page); margin-inline-start: auto; }
 img.figure { max-height: ${(contentHeight * 0.6).toFixed(2)}in; }
+${book.style.largePrint ? LARGE_PRINT_CSS : ''}
 ${languageCss(lang)}
 `;
 }

@@ -50,8 +50,12 @@ export interface BookElement {
   /** Chapters and parts only: false for prologues, epilogues, interludes. */
   numbered?: boolean;
   includeInToc: boolean;
+  /** Only in this edition (an ebook-only newsletter page, a print-only order form). Absent means both. */
+  include?: Edition;
   content: Doc;
 }
+
+export type Edition = 'ebook' | 'print';
 
 export type ThemeId = 'octavo' | 'ledger' | 'marginalia' | 'broadsheet' | 'almanac';
 export type { Binding, TrimId };
@@ -87,6 +91,8 @@ export interface BookStyle {
   embedFonts: boolean;
   /** Paperback (default) or hardcover: sets the trims and page counts printers allow. */
   binding?: Binding;
+  /** Large-print edition: 16 pt type, ragged right, no hyphenation. */
+  largePrint?: boolean;
   /** Paper stock for the print edition; sets the spine width. Defaults to white. */
   paper?: 'white' | 'cream' | 'color';
 }
@@ -139,6 +145,12 @@ export function normalizeOrder(elements: BookElement[]): BookElement[] {
     .map((el, i) => ({ el, i }))
     .sort((a, b) => MATTER_RANK[a.el.matter] - MATTER_RANK[b.el.matter] || a.i - b.i)
     .map(({ el }) => el);
+}
+
+/** The book as one edition sees it, without the sections that belong only to the other. */
+export function editionOf(book: Book, edition: Edition): Book {
+  const elements = book.elements.filter((el) => !el.include || el.include === edition);
+  return elements.length === book.elements.length ? book : { ...book, elements };
 }
 
 export function emptyDoc(): Doc {

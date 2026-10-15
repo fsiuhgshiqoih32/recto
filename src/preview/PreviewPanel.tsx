@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Book, BookElement } from '../model/book';
-import { newId } from '../model/book';
+import { editionOf, newId } from '../model/book';
 import { ebookCss } from '../render/ebookCss';
 import { renderElement, themeOf } from '../render/html';
 import { ORNAMENTS } from '../themes/ornaments';
@@ -72,8 +72,10 @@ function EbookPreview({ book, element, device, active }: { book: Book; element: 
   const html = useMemo(() => {
     if (!debouncedElement) return '';
     const current = debouncedBook.elements.find((el) => el.id === debouncedElement.id) ?? debouncedElement;
+    if (current.include === 'print') return '';
     const body = renderElement(current, {
-      book: debouncedBook,
+      // Chapter numbers count only the sections the ebook has.
+      book: editionOf(debouncedBook, 'ebook'),
       theme: themeOf(debouncedBook),
       target: 'preview',
       hrefFor: () => '#',
@@ -93,7 +95,9 @@ a { color: inherit; }
   return (
     <div className={`device device-${device}`}>
       <div className="device-screen">
-        {element ? <iframe title="Ebook preview" srcDoc={html} /> : <p className="empty-note">Select an element to preview it.</p>}
+        {!element ? <p className="empty-note">Select an element to preview it.</p>
+          : element.include === 'print' ? <p className="empty-note">Print only: this section isn’t in the ebook.</p>
+          : <iframe title="Ebook preview" srcDoc={html} />}
       </div>
     </div>
   );
@@ -164,7 +168,8 @@ function PrintPreview({ book, element, active }: { book: Book; element: BookElem
         </span>
       </div>
       <div className={`print-stage${busy ? ' is-busy' : ''}`} id={`print-scope-panel-${scope}`} role="tabpanel" aria-labelledby={`print-scope-tab-${scope}`}>
-        <iframe title="Print preview" srcDoc={doc.html} />
+        {scope === 'element' && element?.include === 'ebook' && <p className="empty-note">Ebook only: this section isn’t in the print edition.</p>}
+        <iframe title="Print preview" srcDoc={doc.html} hidden={scope === 'element' && element?.include === 'ebook'} />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import type { Book, BookElement } from '../../model/book';
+import { editionOf } from '../../model/book';
 import { decodeDataUrl } from '../../model/dataUrl';
 
 export { decodeDataUrl };
@@ -62,7 +63,8 @@ export interface EpubFile {
 }
 
 /** Builds the list of files that make up the EPUB (everything except `mimetype`). */
-export async function epubFiles(book: Book, options: EpubOptions = {}): Promise<EpubFile[]> {
+export async function epubFiles(source: Book, options: EpubOptions = {}): Promise<EpubFile[]> {
+  const book = editionOf(source, 'ebook');
   const theme = themeOf(book);
   const lang = book.meta.language || 'en';
   const { dir } = languageInfo(lang);

@@ -61,3 +61,36 @@ describe('print layout', () => {
     expect(html).toContain('Fog Season');
   });
 });
+
+describe('editions', () => {
+  it('leaves ebook-only sections out of print, and print-only ones out of the EPUB', async () => {
+    const book = sampleBook();
+    // The Inventory (Chapter One), Fog Season (Two), What the Ledger Knew (Three).
+    const chapters = book.elements.filter((el) => el.kind === 'chapter' && el.numbered !== false);
+    chapters[0].include = 'ebook';
+    chapters[2].include = 'print';
+    const html = printDocument(book, { fontUrl: (f) => f, pagedUrl: 'paged.js' });
+    expect(html).not.toContain(`id="el-${chapters[0].id}"`);
+    expect(html).toContain(`id="el-${chapters[2].id}"`);
+    // Print numbers its chapters without the ebook-only one: Fog Season becomes Chapter One.
+    const fog = html.slice(html.indexOf(`id="el-${chapters[1].id}"`));
+    expect(fog.slice(0, 600)).toContain('Chapter One');
+
+    const { epubFiles } = await import('../../src/export/epub/package');
+    const files = await epubFiles(book, { modified: new Date(0) });
+    const all = files.map((f) => (typeof f.data === 'string' ? f.data : '')).join('\n');
+    expect(all).toContain(`id="el-${chapters[0].id}"`);
+    expect(all).not.toContain(`id="el-${chapters[2].id}"`);
+  });
+
+  it('sets a large-print edition in 16 pt, ragged right, without hyphenation', () => {
+    const book = sampleBook();
+    book.style.largePrint = true;
+    const css = printCss(book, { pages: 200, fontUrl: (f) => f });
+    expect(css).toContain('html { font-size: 16pt; }');
+    expect(css).toMatch(/\.el p, \.el p\.opener, \.el p\.first \{ text-align: left; hyphens: manual;/);
+    const html = printDocument(book, { fontUrl: (f) => f, pagedUrl: 'paged.js', hyphenate: (t) => t.replace(/a/g, 'a­') });
+    expect(html).not.toContain('­');
+    expect(estimatePages(book)).toBeGreaterThan(estimatePages(sampleBook()));
+  });
+});
