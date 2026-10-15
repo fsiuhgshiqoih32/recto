@@ -32,6 +32,8 @@ export function opfDocument(opts: {
   accessibility?: AccessibilityMetadata;
   /** The print edition a page list refers to (dc:source), e.g. urn:isbn:978…. */
   source?: string;
+  /** The authors, when they aren't just the book's author (a box set of several authors' books). */
+  creators?: string[];
 }): string {
   const { meta } = opts;
   const lang = meta.language || 'en';
@@ -44,10 +46,11 @@ export function opfDocument(opts: {
     lines.push(`<meta refines="#subtitle" property="title-type">subtitle</meta>`);
     lines.push(`<meta refines="#title" property="title-type">main</meta>`);
   }
-  if (meta.author) {
-    lines.push(`<dc:creator id="creator">${esc(meta.author)}</dc:creator>`);
-    lines.push(`<meta refines="#creator" property="role" scheme="marc:relators">aut</meta>`);
-  }
+  (opts.creators ?? (meta.author ? [meta.author] : [])).forEach((name, i) => {
+    const id = i ? `creator-${i + 1}` : 'creator';
+    lines.push(`<dc:creator id="${id}">${esc(name)}</dc:creator>`);
+    lines.push(`<meta refines="#${id}" property="role" scheme="marc:relators">aut</meta>`);
+  });
   lines.push(`<dc:language>${esc(lang)}</dc:language>`);
   if (meta.publisher) lines.push(`<dc:publisher>${esc(meta.publisher)}</dc:publisher>`);
   if (meta.description) lines.push(`<dc:description>${esc(meta.description)}</dc:description>`);

@@ -13,7 +13,8 @@ import { OPS, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { PDFDocument } from '@pdfme/pdf-lib';
 import { renderCoverPdf, renderPdf } from '../cli/pdf';
 import { coverWrap } from '../src/export/cover/wrap';
-import { richBook } from './fixtures';
+import { boxSetBook, richBook } from './fixtures';
+import { volumeMembers } from '../src/model/boxset';
 import type { ThemeId, TrimId } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
 import { TRIMS, pageMargins, trimLabel } from '../src/export/print/pageCss';
@@ -295,6 +296,31 @@ rich content with bleed: ${count} pages → ${path}`);
   check(Math.abs(right.x) < 0.1 && Math.abs(left.x - b) < 0.1 && Math.abs(right.y - b) < 0.1 && Math.abs(right.width - t.width * 72) < 0.6 && Math.abs(right.height - t.height * 72) < 0.6,
     `TrimBox is the ${t.width} × ${t.height} in trim, offset from the bleed on the outside edge`);
   check(pdf.getTitle() === book.meta.title && pdf.getAuthor() === book.meta.author, 'the PDF carries the title and author');
+}
+
+// A box set by two authors: each volume opens on a right-hand page with no heads or
+// folio, and the running heads name the volume and its author.
+{
+  const book = boxSetBook();
+  // Long enough chapters that some right-hand pages carry a running head.
+  for (const volume of book.elements.filter((el) => el.kind === 'volume')) {
+    const chapter = volumeMembers(book, volume.id).find((el) => el.kind === 'chapter' && el.numbered !== false)!;
+    chapter.content.content.push(...chapter.content.content, ...chapter.content.content);
+  }
+  const path = join('out', 'box-set.pdf');
+  const { pages: count } = await renderPdf(book, path);
+  const pages = await readPdf(path);
+  const t = TRIMS[book.style.trim];
+  const headZone = pageMargins(t, count).top / t.height;
+  const all = (p: PageInfo) => squash(p.items.map((it) => it.str).join(''));
+  const head = (p: PageInfo) => squash(p.items.filter((it) => it.y < headZone).map((it) => it.str).join(''));
+  console.log(`\nbox set: ${count} pages → ${path}`);
+  const opener = pages.findIndex((p) => all(p).startsWith(squash('Book TwoThe Second LampAda Wren')));
+  check(opener >= 0 && opener % 2 === 0 && !/\d/.test(all(pages[opener])), `Book Two opens on a right-hand page with no running head or folio${opener >= 0 ? ` (page ${opener + 1})` : ''}`);
+  const before = pages.slice(0, Math.max(opener, 0)).map(head);
+  const after = pages.slice(opener + 1).map(head);
+  check(before.includes(squash('Mara Quill')) && before.includes(squash('The Lamp at Harrow Point')), 'volume one’s running heads name its author and title');
+  check(after.includes(squash('Ada Wren')) && after.includes(squash('The Second Lamp')), 'volume two’s running heads name its author and title');
 }
 
 // A PDF for reading: live contents links and bookmarks.

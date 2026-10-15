@@ -25,7 +25,7 @@ const TITLE_KEY: Partial<Record<ElementKind, keyof BookStrings>> = {
 
 /** The default title of an element in a language ("Contents", "Índice", "目录"). */
 export function defaultTitle(kind: ElementKind, lang = 'en'): string {
-  if (kind === 'chapter' || kind === 'part') return '';
+  if (kind === 'chapter' || kind === 'part' || kind === 'volume') return '';
   const key = TITLE_KEY[kind];
   return key ? bookStrings(lang)[key] : KIND_LABEL[kind];
 }
@@ -55,7 +55,7 @@ export function createElement(kind: ElementKind, meta?: BookMeta, overrides: Par
     kind,
     matter,
     title: defaultTitle(kind, meta?.language),
-    numbered: kind === 'chapter' || kind === 'part' ? true : undefined,
+    numbered: kind === 'chapter' || kind === 'part' || kind === 'volume' ? true : undefined,
     includeInToc: matter !== 'front',
     content: kind === 'copyright' && meta ? copyrightDoc(meta) : emptyDoc(),
     ...overrides,

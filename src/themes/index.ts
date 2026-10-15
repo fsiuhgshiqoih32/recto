@@ -234,6 +234,13 @@ export function baseCss(theme: Theme, lang = 'en'): string {
 .toc-list li { margin: 0 0 0.45em; }
 .toc-list a { color: inherit; text-decoration: none; }
 .toc-part { margin-top: 1em !important; font-weight: 600; }
+.toc-volume { margin-top: 1.4em !important; font-weight: 600; font-size: 1.1em; }
+.toc-nested { padding-inline-start: 1.2em; }
+.volume-subtitle { margin: 0.8em 0 0; text-indent: 0; font-style: italic; font-size: 1.1em; }
+.volume-author { margin: 1.6em 0 0; text-indent: 0; font-size: 1.05em; }
+.el.volume .body { margin-top: 3em; text-align: center; font-style: italic; }
+.el.volume .body p { text-indent: 0; text-align: inherit; }
+.el .volume-head p { text-indent: 0; text-align: inherit; }
 .toc-label + .toc-title::before { content: ": "; }
 :lang(zh) .toc-label + .toc-title::before, :lang(ja) .toc-label + .toc-title::before, :lang(ko) .toc-label + .toc-title::before { content: "\\3000"; }
 .el ul, .el ol { margin: 0.7em 0; padding-inline-start: 1.6em; }

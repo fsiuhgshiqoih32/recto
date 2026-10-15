@@ -38,6 +38,8 @@ export interface BookStrings {
   epilogue: string;
   /** Heading for endnotes. */
   notes: string;
+  /** "Book {n}": the label of a volume in a box set. */
+  volume: string;
 }
 
 export interface Language {
@@ -56,12 +58,12 @@ const S = (
   chapter: string, part: string, contents: string, titlePage: string, copyright: string, dedication: string,
   epigraph: string, acknowledgments: string, aboutAuthor: string, alsoBy: string, cover: string,
   beginReading: string, allRightsReserved: string, ebook: string, paperback: string, prologue: string, epilogue: string,
-): Omit<BookStrings, 'notes'> => ({
+): Omit<BookStrings, 'notes' | 'volume'> => ({
   chapter, part, contents, titlePage, copyright, dedication, epigraph, acknowledgments, aboutAuthor, alsoBy,
   cover, beginReading, allRightsReserved, ebook, paperback, prologue, epilogue,
 });
 
-type Entry = [code: string, name: string, native: string, script: ScriptGroup, strings: Omit<BookStrings, 'notes'>];
+type Entry = [code: string, name: string, native: string, script: ScriptGroup, strings: Omit<BookStrings, 'notes' | 'volume'>];
 
 /** The heading for endnotes in each language. */
 const NOTES: Record<string, string> = {
@@ -69,6 +71,14 @@ const NOTES: Record<string, string> = {
   nb: 'Noter', fi: 'Viitteet', pl: 'Przypisy', cs: 'Poznámky', ro: 'Note', hu: 'Jegyzetek', tr: 'Notlar', vi: 'Chú thích',
   id: 'Catatan', ru: 'Примечания', uk: 'Примітки', el: 'Σημειώσεις', ar: 'الحواشي', fa: 'یادداشت‌ها', he: 'הערות',
   hi: 'टिप्पणियाँ', th: 'เชิงอรรถ', 'zh-Hans': '注释', 'zh-Hant': '註釋', ja: '注', ko: '주',
+};
+
+/** The label of a volume in a box set ("Book One") in each language. */
+const VOLUME: Record<string, string> = {
+  en: 'Book {n}', es: 'Libro {n}', fr: 'Livre {n}', de: 'Band {n}', it: 'Libro {n}', pt: 'Livro {n}', nl: 'Boek {n}', sv: 'Bok {n}',
+  da: 'Bog {n}', nb: 'Bok {n}', fi: '{n}. kirja', pl: 'Tom {n}', cs: 'Svazek {n}', ro: 'Volumul {n}', hu: '{n}. kötet', tr: '{n}. Kitap',
+  vi: 'Tập {n}', id: 'Buku {n}', ru: 'Книга {n}', uk: 'Книга {n}', el: 'Βιβλίο {n}', ar: 'الكتاب {n}', fa: 'کتاب {n}', he: 'ספר {n}',
+  hi: 'पुस्तक {n}', th: 'เล่ม {n}', 'zh-Hans': '第{n}册', 'zh-Hant': '第{n}冊', ja: '第{n}巻', ko: '제{n}권',
 };
 
 const ENTRIES: Entry[] = [
@@ -116,7 +126,7 @@ export const LANGUAGES: Language[] = ENTRIES.map(([code, name, native, script, s
   native,
   script,
   dir: script === 'arabic' || script === 'hebrew' ? 'rtl' : 'ltr',
-  strings: { ...strings, notes: NOTES[code] ?? 'Notes' },
+  strings: { ...strings, notes: NOTES[code] ?? 'Notes', volume: VOLUME[code] ?? 'Book {n}' },
 }));
 
 const BY_CODE = new Map(LANGUAGES.map((l) => [l.code.toLowerCase(), l]));

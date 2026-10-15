@@ -574,6 +574,20 @@ select {
 .nav-secondary { font-size: 12px; line-height: 16px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chapter-menu { width: 28px; height: 28px; margin-right: 4px; opacity: 0; }
 .nav-item:hover .chapter-menu, .nav-item:focus-within .chapter-menu, .nav-item.is-selected .chapter-menu, .chapter-menu[aria-expanded='true'] { opacity: 1; }
+.nav-item.is-volume:not(:first-child) { margin-top: 8px; }
+.nav-item.is-volume .nav-primary { font-weight: 600; }
+.nav-item.in-volume .nav-select { padding-left: 16px; }
+.library-picker .picker-list { display: flex; flex-direction: column; gap: 2px; margin: 0 0 12px; padding: 0; border: 0; max-height: 46dvh; overflow: auto; }
+.picker-row { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: background-color var(--t-fast) var(--ease-out); }
+.picker-row:hover { background: var(--hover); }
+.picker-row.is-chosen { background: var(--accent-wash); }
+.picker-row input { flex: none; margin: 0; accent-color: var(--accent); }
+.picker-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.picker-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-text small { color: var(--ink-3); font-size: 12px; }
+.picker-order { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--on-accent, #fff); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.volume-source { margin: 4px 0 14px; padding: 12px 14px; border-radius: var(--radius-md, 10px); background: var(--chrome); color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.volume-source p { margin: 0 0 8px; }
 .nav-empty { padding: 6px 12px 6px 36px; font: italic 14px/1.4 var(--font-display); color: var(--ink-3); }
 
 /* ---------- Editor ---------- */

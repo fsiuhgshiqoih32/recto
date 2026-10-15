@@ -1,4 +1,4 @@
-import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import type { Book, BookElement, ElementKind, Matter } from '../model/book';
 import { KIND_LABEL } from '../model/book';
 import { toRoman } from '../model/numbers';
@@ -7,6 +7,8 @@ import { Icon } from './icons';
 import { ADDABLE, type BookActions } from './useBook';
 import { DropdownMenu } from './DropdownMenu';
 import { createFlip } from './motion';
+import { LibraryPicker } from './BoxSetDialog';
+import { elementsInVolumes } from '../model/boxset';
 
 const GROUPS: { matter: Matter; title: string }[] = [
   { matter: 'front', title: 'Front matter' },
@@ -26,6 +28,7 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
   const theme = themeOf(book);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [pickingVolume, setPickingVolume] = useState(false);
 
   const dragMatter = book.elements.find((el) => el.id === dragId)?.matter;
 
@@ -56,7 +59,7 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
   const rowTitles = (el: BookElement) => {
     const label = elementLabel(numbering.get(el.id), theme, book.meta.language);
     const title = el.title.trim();
-    if (el.kind === 'chapter' || el.kind === 'part') {
+    if (el.kind === 'chapter' || el.kind === 'part' || el.kind === 'volume') {
       const kind = el.numbered === false ? `Unnumbered ${KIND_LABEL[el.kind].toLowerCase()}` : KIND_LABEL[el.kind];
       return { primary: title || label || 'Untitled', secondary: title ? label || kind : kind };
     }
@@ -73,8 +76,25 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
     if (next && next.id !== el.id) onSelect(next.id);
   };
 
+  // Chapters and parts inside a box set's volumes sit a step in.
+  const inVolume = elementsInVolumes(book);
+
   return (
     <nav ref={nav} className="navigator" aria-label="Book contents">
+      {pickingVolume && (
+        <LibraryPicker
+          title="Add a volume"
+          intro="Copies a book’s chapters into this one as its next volume, with the book’s title and dedication on the volume’s opening page. The copy stays linked, so you can update it if you edit the original."
+          confirmLabel="Add volume"
+          multiple={false}
+          excludeId={book.id}
+          onPick={([source]) => {
+            flip.capture();
+            onSelect(actions.addVolume(source).id);
+          }}
+          onClose={() => setPickingVolume(false)}
+        />
+      )}
       {GROUPS.map(({ matter, title }) => {
         const items = book.elements.filter((el) => el.matter === matter);
         return (
@@ -83,6 +103,7 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
               <h2>{title}</h2>
               <AddMenu
                 kinds={ADDABLE[matter]}
+                extra={matter === 'body' ? (close) => <button type="button" role="menuitem" onClick={() => { close(); setPickingVolume(true); }}>Book from your library…</button> : undefined}
                 onAdd={(kind) => {
                   const afterId = book.elements.find((el) => el.id === selectedId)?.matter === matter ? selectedId! : undefined;
                   flip.capture();
@@ -112,6 +133,8 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
                     key={el.id}
                     className={[
                       'nav-item',
+                      el.kind === 'volume' && 'is-volume',
+                      inVolume.has(el.id) && 'in-volume',
                       el.id === selectedId && 'is-selected',
                       el.id === dragId && 'is-dragging',
                       dropTarget === el.id && dragId !== el.id && 'is-drop-target',
@@ -176,8 +199,8 @@ function numeral(num: { chapter?: number; part?: number } | undefined): string {
   return '';
 }
 
-function AddMenu({ kinds, onAdd }: { kinds: ElementKind[]; onAdd: (kind: ElementKind) => void }) {
-  if (kinds.length === 1) {
+function AddMenu({ kinds, onAdd, extra }: { kinds: ElementKind[]; onAdd: (kind: ElementKind) => void; extra?: (close: () => void) => ReactNode }) {
+  if (kinds.length === 1 && !extra) {
     return (
       <button type="button" className="icon-btn" aria-label={`Add ${KIND_LABEL[kinds[0]]}`} title={`Add ${KIND_LABEL[kinds[0]]}`} onClick={() => onAdd(kinds[0])}>
         <Icon name="plus" size={15} />
@@ -200,6 +223,7 @@ function AddMenu({ kinds, onAdd }: { kinds: ElementKind[]; onAdd: (kind: Element
               {KIND_LABEL[kind]}
             </button>
           ))}
+          {extra && <><div className="menu-sep" />{extra(close)}</>}
       </>}
     </DropdownMenu>
   );

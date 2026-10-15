@@ -10,6 +10,7 @@ import { Icon, type IconName, SmallCapsGlyph } from '../ui/icons';
 import { languageInfo } from '../i18n/languages';
 import { usePreference } from '../ui/preferences';
 import { SmallCaps, bookExtensions } from './extensions';
+import { useModal } from '../ui/useModal';
 
 interface EditorProps {
   /** Changing the key element id recreates the editor (each element keeps its own undo history). */
@@ -335,13 +336,6 @@ const LAYOUTS: { id: ImageLayout; label: string; hint: string }[] = [
   { id: 'bleed', label: 'Full page, to the edges', hint: 'Fills a whole printed page and runs off the edges. Needs bleed.' },
   { id: 'spread', label: 'Across two pages', hint: 'One image over a left and a right page, for maps and art. Needs bleed.' },
 ];
-
-function useModal(ref: React.RefObject<HTMLDialogElement | null>) {
-  useEffect(() => {
-    const dialog = ref.current;
-    if (dialog && !dialog.open) dialog.showModal();
-  }, [ref]);
-}
 
 function ImageDialog({ editor, bleed, onEnableBleed, onClose }: { editor: TiptapEditor; bleed: boolean; onEnableBleed?: () => void; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);

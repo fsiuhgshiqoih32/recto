@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import type { Book, BookElement, Store } from '../../model/book';
 import { editionOf } from '../../model/book';
+import { bookCreators } from '../../model/boxset';
 import { decodeDataUrl } from '../../model/dataUrl';
 
 export { decodeDataUrl };
@@ -185,6 +186,7 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
       coverImageId,
       dir,
       accessibility: accessibilityMetadata(book, accessibilityFacts(book)),
+      creators: bookCreators(book),
     }),
   });
   files.push({ path: 'META-INF/container.xml', data: CONTAINER_XML });

@@ -66,6 +66,7 @@ export type ElementKind =
   | 'dedication'
   | 'epigraph'
   | 'toc'
+  | 'volume'
   | 'part'
   | 'chapter'
   | 'acknowledgments'
@@ -88,7 +89,15 @@ export interface BookElement {
   include?: Edition;
   /** Chapters and parts: an image above the heading, as a data: URL. */
   headingImage?: string;
+  /** Volumes of a box set: who wrote this one, and the library book it came from. */
+  volume?: VolumeInfo;
   content: Doc;
+}
+
+export interface VolumeInfo {
+  author?: string;
+  /** The book in the library this volume was copied from, and the version copied (its updatedAt). */
+  source?: { bookId: string; title: string; syncedAt: number };
 }
 
 export type Edition = 'ebook' | 'print';
@@ -135,6 +144,8 @@ export interface BookStyle {
   largePrint?: boolean;
   /** Paper stock for the print edition; sets the spine width. Defaults to white. */
   paper?: 'white' | 'cream' | 'color';
+  /** Box sets: the contents page lists only the volumes (ebook navigation still lists every chapter). */
+  contentsVolumesOnly?: boolean;
 }
 
 export interface Book {
@@ -152,6 +163,7 @@ export const MATTER_OF: Record<ElementKind, Matter> = {
   dedication: 'front',
   epigraph: 'front',
   toc: 'front',
+  volume: 'body',
   part: 'body',
   chapter: 'body',
   acknowledgments: 'back',
@@ -166,6 +178,7 @@ export const KIND_LABEL: Record<ElementKind, string> = {
   dedication: 'Dedication',
   epigraph: 'Epigraph',
   toc: 'Contents',
+  volume: 'Volume',
   part: 'Part',
   chapter: 'Chapter',
   acknowledgments: 'Acknowledgments',

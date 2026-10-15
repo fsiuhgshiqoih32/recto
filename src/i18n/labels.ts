@@ -62,3 +62,7 @@ export function chapterLabel(style: LabelStyle, lang: string, n: number): string
 export function partLabel(style: LabelStyle, lang: string, n: number): string {
   return label(bookStrings(lang).part, style, n, lang);
 }
+
+export function volumeLabel(style: LabelStyle, lang: string, n: number): string {
+  return label(bookStrings(lang).volume, style, n, lang);
+}

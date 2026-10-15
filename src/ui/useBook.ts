@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { Book, BookElement, BookMeta, BookStyle, ElementKind } from '../model/book';
 import { normalizeOrder } from '../model/book';
 import { copyrightDoc, createElement, defaultTitle } from '../model/defaults';
+import { updateVolume, volumeFromBook, withVolume } from '../model/boxset';
 
 export interface BookActions {
   replace(book: Book): void;
@@ -14,6 +15,10 @@ export interface BookActions {
   /** Moves an element before `beforeId` (same group only), or to the end of its group when null. */
   moveElement(id: string, beforeId: string | null): void;
   moveBy(id: string, delta: -1 | 1): void;
+  /** Adds a book from the library as the box set's next volume; throws if that book is a box set itself. */
+  addVolume(source: Book): BookElement;
+  /** Replaces a volume's chapters with its source book's current ones. */
+  updateVolume(volumeId: string, source: Book): void;
 }
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -82,6 +87,12 @@ export function useBook(initial: Book): [Book, BookActions] {
           [elements[i], elements[j]] = [elements[j], elements[i]];
           return { ...prev, elements };
         }),
+      addVolume: (source) => {
+        const added = volumeFromBook(source);
+        change((prev) => withVolume(prev, added));
+        return added[0];
+      },
+      updateVolume: (volumeId, source) => change((prev) => updateVolume(prev, volumeId, source)),
     }),
     [addElement, change],
   );
@@ -92,6 +103,6 @@ export function useBook(initial: Book): [Book, BookActions] {
 /** Kinds offered by each navigator group's "Add" menu. */
 export const ADDABLE: Record<'front' | 'body' | 'back', ElementKind[]> = {
   front: ['title-page', 'copyright', 'dedication', 'epigraph', 'toc'],
-  body: ['chapter', 'part'],
+  body: ['chapter', 'part', 'volume'],
   back: ['acknowledgments', 'about-author', 'also-by', 'other'],
 };

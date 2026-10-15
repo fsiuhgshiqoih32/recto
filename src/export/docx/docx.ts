@@ -35,6 +35,7 @@ import { bookStrings, languageInfo } from '../../i18n/languages';
 import { FONT_FAMILIES } from '../../themes/fonts';
 import { imageInfo } from '../../preflight/images';
 import { TRIMS, bodySize, pageMargins } from '../print/pageCss';
+import { contentsEntries, hasSeveralAuthors, isBoxSet, volumeAuthor } from '../../model/boxset';
 
 const IMAGE_TYPE: Record<string, 'png' | 'jpg' | 'gif' | 'bmp'> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/bmp': 'bmp' };
 
@@ -220,6 +221,12 @@ function heading(el: BookElement, book: Book, numbering: ReturnType<typeof compu
     if (el.subtitle?.trim()) out.push(new Paragraph({ style: 'Subtitle', alignment: AlignmentType.CENTER, children: [new TextRun({ text: el.subtitle.trim(), italics: true })] }));
     return out;
   }
+  if (el.kind === 'volume') {
+    const out = [new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { before: 2400, after: 240 }, children: [new TextRun(label && title ? elementTocText(el, numbering.get(el.id), theme, lang) : label || title || 'Untitled')] })];
+    if (el.subtitle?.trim()) out.push(new Paragraph({ style: 'Subtitle', alignment: AlignmentType.CENTER, children: [new TextRun({ text: el.subtitle.trim(), italics: true })] }));
+    if (hasSeveralAuthors(book)) out.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 480, after: 720 }, children: [new TextRun({ text: volumeAuthor(book, el), size: 26 })] }));
+    return out;
+  }
   if (['copyright', 'dedication', 'epigraph'].includes(el.kind)) return [];
   return [new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { before: 1200, after: 480 }, children: [new TextRun(title || 'Untitled')] })];
 }
@@ -235,9 +242,13 @@ function titlePage(book: Book): Paragraph[] {
 
 function contents(book: Book, numbering: ReturnType<typeof computeNumbering>): Paragraph[] {
   const theme = themeOf(book);
-  return book.elements
-    .filter((e) => e.includeInToc && e.kind !== 'toc' && e.kind !== 'title-page')
-    .map((e) => new Paragraph({ indent: e.matter === 'body' && e.kind !== 'part' ? { left: convertInchesToTwip(0.25) } : undefined, children: [new TextRun(elementTocText(e, numbering.get(e.id), theme, book.meta.language))] }));
+  const boxSet = isBoxSet(book);
+  return contentsEntries(book)
+    .map((e) => {
+      // Box sets: volumes at the margin, their parts a step in, chapters two.
+      const depth = e.matter !== 'body' || e.kind === 'volume' ? 0 : (boxSet ? 1 : 0) + (e.kind === 'part' ? 0 : 1);
+      return new Paragraph({ indent: depth ? { left: convertInchesToTwip(0.25 * depth) } : undefined, children: [new TextRun({ text: elementTocText(e, numbering.get(e.id), theme, book.meta.language), bold: e.kind === 'volume' })] });
+    });
 }
 
 /** Builds the .docx file. */

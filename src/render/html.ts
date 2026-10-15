@@ -2,7 +2,8 @@
 // The EPUB exporter, the print exporter and the live previews all use it,
 // so the ebook and the paperback can never drift apart.
 
-import { chapterLabel, partLabel } from '../i18n/labels';
+import { chapterLabel, partLabel, volumeLabel } from '../i18n/labels';
+import { contentsEntries, elementsInVolumes, hasSeveralAuthors, volumeAuthor } from '../model/boxset';
 import { bookStrings, isBicameral, languageInfo } from '../i18n/languages';
 import type { BlockNode, Book, BookElement, ElementKind, InlineNode, ListItemNode, Mark, Store, TableRowNode } from '../model/book';
 import type { Theme } from '../themes';
@@ -41,6 +42,7 @@ export interface RenderContext {
 export interface Numbering {
   chapter?: number;
   part?: number;
+  volume?: number;
 }
 
 const EPUB_TYPE: Partial<Record<ElementKind, string>> = {
@@ -49,6 +51,7 @@ const EPUB_TYPE: Partial<Record<ElementKind, string>> = {
   dedication: 'dedication',
   epigraph: 'epigraph',
   toc: 'toc',
+  volume: 'volume',
   part: 'part',
   chapter: 'chapter',
   acknowledgments: 'acknowledgments',
@@ -66,13 +69,18 @@ export function anchorId(el: BookElement): string {
   return `el-${el.id}`;
 }
 
-/** Chapter and part numbers, counting only numbered elements, in book order. */
+/** Chapter and part numbers, counting only numbered elements, in book order. Each volume of a box set starts again from one. */
 export function computeNumbering(book: Book): Map<string, Numbering> {
   const map = new Map<string, Numbering>();
   let chapter = 0;
   let part = 0;
+  let volume = 0;
   for (const el of book.elements) {
-    if (el.kind === 'chapter' && el.numbered !== false) map.set(el.id, { chapter: ++chapter });
+    if (el.kind === 'volume') {
+      chapter = 0;
+      part = 0;
+      map.set(el.id, el.numbered !== false ? { volume: ++volume } : {});
+    } else if (el.kind === 'chapter' && el.numbered !== false) map.set(el.id, { chapter: ++chapter });
     else if (el.kind === 'part' && el.numbered !== false) map.set(el.id, { part: ++part });
     else map.set(el.id, {});
   }
@@ -83,6 +91,7 @@ export function computeNumbering(book: Book): Map<string, Numbering> {
 export function elementLabel(num: Numbering | undefined, theme: Theme, lang = 'en'): string {
   if (num?.chapter) return chapterLabel(theme.chapterLabel, lang, num.chapter);
   if (num?.part) return partLabel(theme.partLabel, lang, num.part);
+  if (num?.volume) return volumeLabel(theme.partLabel, lang, num.volume);
   return '';
 }
 
@@ -411,6 +420,7 @@ const DOC_ROLE: Partial<Record<ElementKind, string>> = {
   dedication: 'doc-dedication',
   epigraph: 'doc-epigraph',
   toc: 'doc-toc',
+  volume: 'doc-part',
   part: 'doc-part',
   chapter: 'doc-chapter',
   acknowledgments: 'doc-acknowledgments',
@@ -503,6 +513,31 @@ function renderPart(el: BookElement, num: Numbering | undefined, ctx: RenderCont
   );
 }
 
+/**
+ * A volume's opening page in a box set: "Book One", its title, subtitle and,
+ * when the volumes are by different authors, its author. Volumes share the
+ * part page's styles; print running heads pick up the title and author.
+ */
+function renderVolume(el: BookElement, num: Numbering | undefined, ctx: RenderContext): string {
+  const label = elementLabel(num, ctx.theme, ctx.book.meta.language);
+  const title = el.title.trim() || (label ? '' : 'Untitled');
+  const byline = hasSeveralAuthors(ctx.book) ? volumeAuthor(ctx.book, el) : '';
+  return (
+    sectionOpen(el) +
+    `<header class="part-head volume-head">\n` +
+    headingImage(el, ctx) +
+    `<h1 class="part-heading">` +
+    (label ? `<span class="part-label">${esc(label)}</span>` : '') +
+    (title ? `<span class="part-title volume-title">${esc(title)}</span>` : '') +
+    `</h1>\n` +
+    (el.subtitle?.trim() ? `<p class="volume-subtitle">${esc(el.subtitle.trim())}</p>\n` : '') +
+    (byline ? `<p class="volume-author">${esc(byline)}</p>\n` : '') +
+    `${headOrnament(ctx)}</header>\n` +
+    bodyWithNotes(el, ctx, false, elementTocText(el, num, ctx.theme, ctx.book.meta.language)) +
+    `</section>\n`
+  );
+}
+
 function renderTitlePage(el: BookElement, ctx: RenderContext): string {
   const { meta } = ctx.book;
   return (
@@ -517,8 +552,8 @@ function renderTitlePage(el: BookElement, ctx: RenderContext): string {
 }
 
 function renderToc(el: BookElement, numbering: Map<string, Numbering>, ctx: RenderContext): string {
-  const items = ctx.book.elements
-    .filter((e) => e.includeInToc && e.kind !== 'toc' && e.kind !== 'title-page')
+  const nested = elementsInVolumes(ctx.book);
+  const items = contentsEntries(ctx.book)
     .map((e) => {
       const label = elementLabel(numbering.get(e.id), ctx.theme, ctx.book.meta.language);
       const title = e.title.trim();
@@ -531,7 +566,7 @@ function renderToc(el: BookElement, numbering: Map<string, Numbering>, ctx: Rend
         ctx.links === false
           ? `<span class="toc-entry" data-target="${escAttr(ctx.hrefFor(e))}">${text}</span>`
           : `<a class="toc-entry" href="${escAttr(ctx.hrefFor(e))}">${text}</a>`;
-      return `<li class="toc-${e.kind}">${entry}</li>`;
+      return `<li class="toc-${e.kind}${nested.has(e.id) ? ' toc-nested' : ''}">${entry}</li>`;
     })
     .join('\n');
   return (
@@ -572,6 +607,8 @@ export function renderElement(el: BookElement, ctx: RenderContext, numbering = c
       return renderChapter(el, numbering.get(el.id), ctx);
     case 'part':
       return renderPart(el, numbering.get(el.id), ctx);
+    case 'volume':
+      return renderVolume(el, numbering.get(el.id), ctx);
     case 'title-page':
       return renderTitlePage(el, ctx);
     case 'toc':

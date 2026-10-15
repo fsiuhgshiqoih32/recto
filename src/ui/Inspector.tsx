@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import { chapterLabel } from '../i18n/labels';
 import { languageInfo } from '../i18n/languages';
 import { LanguagePicker } from './LanguagePicker';
@@ -12,6 +12,8 @@ import { THEME_LIST } from '../themes';
 import { fontStack } from '../themes/fonts';
 import { ORNAMENTS } from '../themes/ornaments';
 import type { BookActions } from './useBook';
+import { isBoxSet, volumeMembers } from '../model/boxset';
+import { listBooks, loadBook } from '../store/db';
 
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
@@ -174,15 +176,20 @@ export function SectionPanel({ book, element, actions, onEdit, onShowBookDetails
   book: Book; element: BookElement; actions: BookActions; onEdit: () => void; onShowBookDetails: () => void;
 }) {
   const update = (patch: Partial<BookElement>) => actions.updateElement(element.id, patch);
-  const chapterLike = element.kind === 'chapter' || element.kind === 'part';
+  const chapterLike = element.kind === 'chapter' || element.kind === 'part' || element.kind === 'volume';
+  const volume = element.kind === 'volume';
   const headless = ['copyright', 'dedication', 'epigraph'].includes(element.kind);
   return <div className="panel-body section-panel">
     <h3 className="panel-heading">{KIND_LABEL[element.kind]} settings</h3>
     <Field label={headless ? 'Name in the navigator' : 'Section title'}>
       <input value={element.title} lang={book.meta.language} dir="auto" onChange={(event) => update({ title: event.target.value })} placeholder="Untitled" />
     </Field>
-    {element.kind === 'chapter' && <Field label="Section subtitle"><input value={element.subtitle ?? ''} lang={book.meta.language} dir="auto" onChange={(event) => update({ subtitle: event.target.value })} placeholder="Optional" /></Field>}
-    {chapterLike && <Toggle checked={element.numbered !== false} onChange={(numbered) => update({ numbered })} label="Numbered" hint="Chapter numbers update automatically." />}
+    {(element.kind === 'chapter' || volume) && <Field label="Section subtitle"><input value={element.subtitle ?? ''} lang={book.meta.language} dir="auto" onChange={(event) => update({ subtitle: event.target.value })} placeholder="Optional" /></Field>}
+    {volume && <Field label="Volume author" hint="When volumes have different authors, each volume’s opening page, running heads and the ebook’s metadata name them.">
+      <input value={element.volume?.author ?? ''} dir="auto" onChange={(event) => update({ volume: { ...element.volume, author: event.target.value } })} placeholder={book.meta.author || 'Same as the box set'} />
+    </Field>}
+    {chapterLike && <Toggle checked={element.numbered !== false} onChange={(numbered) => update({ numbered })} label="Numbered" hint={volume ? 'Book One, Book Two… Chapter numbers start again in each volume.' : 'Chapter numbers update automatically.'} />}
+    {volume && element.volume?.source && <VolumeSource book={book} element={element} actions={actions} />}
     {chapterLike && (
       <div className="field">
         <span className="field-label">Heading image</span>
@@ -215,6 +222,7 @@ export function SectionPanel({ book, element, actions, onEdit, onShowBookDetails
         <option value="print">Print only</option>
       </select>
     </Field>
+    {element.kind === 'toc' && isBoxSet(book) && <Toggle checked={!book.style.contentsVolumesOnly} onChange={(all) => actions.updateStyle({ contentsVolumesOnly: !all })} label="List each volume’s chapters" hint="Off: the contents page lists only the volumes. The ebook’s navigation menu always lists every chapter." />}
     {headless && <p className="field-hint">This page prints without a heading.</p>}
     {GENERATED_KINDS.has(element.kind) ? <div className="section-note">
       <p>{element.kind === 'toc' ? 'Recto generates this page from sections listed in contents. Print editions include page numbers; ebooks include links.' : 'Recto generates this page from your book details.'}</p>
@@ -296,4 +304,38 @@ export function BookPanel({ book, actions, spellcheckNote }: { book: Book; actio
       </p>
     </div>
   );
+}
+
+/** Where a box set's volume came from, and a way to bring in later edits to that book. */
+function VolumeSource({ book, element, actions }: { book: Book; element: BookElement; actions: BookActions }) {
+  const source = element.volume!.source!;
+  const [library, setLibrary] = useState<{ updatedAt: number } | null | undefined>(undefined);
+  const [message, setMessage] = useState('');
+  useEffect(() => {
+    let live = true;
+    void listBooks().then(
+      (books) => live && setLibrary(books.find((b) => b.id === source.bookId) ?? null),
+      () => live && setLibrary(null),
+    );
+    return () => { live = false; };
+  }, [source.bookId, source.syncedAt]);
+  const changed = !!library && library.updatedAt > source.syncedAt;
+  const update = async () => {
+    const chapters = volumeMembers(book, element.id).length;
+    if (!window.confirm(`Replace the ${chapters} sections in this volume with the current ones from “${source.title}”? Edits made to them in this box set will be lost.`)) return;
+    try {
+      const latest = await loadBook(source.bookId);
+      if (!latest) throw new Error('missing');
+      actions.updateVolume(element.id, latest);
+      setMessage('Updated from the library.');
+    } catch (e) {
+      setMessage(e instanceof Error && e.message !== 'missing' ? e.message : 'That book is no longer on this device.');
+    }
+  };
+  return <div className="volume-source">
+    <p>Copied from “{source.title}” on {new Date(source.syncedAt).toLocaleDateString()}.{' '}
+      {library === null ? 'That book is no longer on this device.' : changed ? 'It has changed since.' : library ? 'It hasn’t changed since.' : ''}</p>
+    {library && <button type="button" className="btn" onClick={() => void update()}>{changed ? 'Update from the library' : 'Copy it again'}</button>}
+    {message && <p role="status" className="field-hint">{message}</p>}
+  </div>;
 }

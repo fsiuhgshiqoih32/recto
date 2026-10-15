@@ -11,6 +11,7 @@ import { bookFonts, fontFaceCss } from '../../themes/fonts';
 import { TRIMS, type Trim, isLarge } from './trims';
 import { notePlacement } from '../../render/html';
 import { BLEED } from '../cover/wrap';
+import { hasSeveralAuthors, isBoxSet } from '../../model/boxset';
 
 export { TRIMS, type Trim, trimLabel } from './trims';
 
@@ -100,8 +101,10 @@ export function printCss(book: Book, opts: { pages: number; fontUrl: (file: stri
   // Printers want text in 100% black: grey would be screened into a dot pattern.
   const head = `font-family: var(--heading-font); ${theme.runningHead} color: #000;`;
   const folio = 'font-family: var(--body-font); font-size: 0.85em; color: #000;';
-  const verso = cssString(book.meta.author || book.meta.title);
-  const recto = book.style.rectoHeader === 'chapter' ? 'string(chapter)' : cssString(book.meta.title);
+  // In a box set, heads name the volume (and its author, when the volumes have different authors).
+  const boxSet = isBoxSet(book);
+  const verso = hasSeveralAuthors(book) ? 'string(volumeauthor)' : cssString(book.meta.author || book.meta.title);
+  const recto = book.style.rectoHeader === 'chapter' ? 'string(chapter)' : boxSet ? 'string(volume)' : cssString(book.meta.title);
   const blank = '@top-center { content: none; } @bottom-center { content: none; }';
   const sink = (fraction: number) => `${(contentHeight * fraction).toFixed(2)}in`;
 
@@ -135,6 +138,7 @@ ${theme.css}
 }
 @page front { ${blank} }
 @page part { ${blank} }
+@page volume { ${blank} }
 @page :blank { ${blank} }
 @page chapter:first { ${blank} }
 html { font-size: ${bodySize(book)}pt; }
@@ -152,6 +156,10 @@ body { margin: 0; color: #000; line-height: 1.42; font-family: var(--body-font);
 .el.chapter, .el[data-matter="back"] { page: chapter; break-before: ${opener}; }
 .el.part { page: part; break-before: right; }
 .el.part .part-head { padding-top: ${sink(0.32)}; }
+.el.volume { page: volume; break-before: right; }
+.el.volume .volume-head { padding-top: ${sink(0.26)}; }
+.volume-title { string-set: volume content(text); }
+.volume-author { string-set: volumeauthor content(text); }
 .chapter-head, .el[data-matter="back"] .matter-head { padding-top: ${sink(0.2)}; margin-bottom: 2.4em; }
 .body-start { counter-reset: page 1; }
 .running { string-set: chapter content(text); }

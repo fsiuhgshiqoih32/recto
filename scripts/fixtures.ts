@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import type { BlockNode, Book, InlineNode } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
+import { newBoxSet } from '../src/model/boxset';
 
 export const iconPng = `data:image/png;base64,${readFileSync('build/icon.png').toString('base64')}`;
 
@@ -41,5 +42,15 @@ export function richBook(): Book {
     { type: 'image', attrs: { src: iconPng, alt: 'The Recto mark', layout: 'bleed', caption: null } },
     { type: 'image', attrs: { src: iconPng, alt: 'The Recto mark across two pages', layout: 'spread', caption: null } },
   );
+  return book;
+}
+
+/** A box set of two books by different authors, gathered the way the app's "New box set" does it. */
+export function boxSetBook(): Book {
+  const first = sampleBook();
+  const second = sampleBook();
+  second.meta = { ...second.meta, title: 'The Second Lamp', subtitle: '', author: 'Ada Wren' };
+  const book = newBoxSet([first, second]);
+  book.meta = { ...book.meta, title: 'The Harrow Point Collection', subtitle: 'Two Novels' };
   return book;
 }

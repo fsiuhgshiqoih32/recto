@@ -7,18 +7,27 @@ export interface TocEntry {
   children: TocEntry[];
 }
 
-/** Nests chapters under the part that precedes them; back matter ends a part. */
+/**
+ * Nests chapters under the part that precedes them, and parts and chapters
+ * under the volume that precedes them (box sets); back matter ends both.
+ */
 export function buildTocTree(items: { text: string; href: string; kind: string; matter: string }[]): TocEntry[] {
   const roots: TocEntry[] = [];
+  let volume: TocEntry | null = null;
   let part: TocEntry | null = null;
   for (const item of items) {
     const entry: TocEntry = { text: item.text, href: item.href, kind: item.kind, children: [] };
-    if (item.kind === 'part') {
-      part = entry;
+    if (item.kind === 'volume') {
+      volume = entry;
+      part = null;
       roots.push(entry);
-    } else if (part && item.matter === 'body') {
-      part.children.push(entry);
+    } else if (item.kind === 'part') {
+      part = entry;
+      (volume ? volume.children : roots).push(entry);
+    } else if ((part || volume) && item.matter === 'body') {
+      (part ?? volume)!.children.push(entry);
     } else {
+      volume = null;
       part = null;
       roots.push(entry);
     }

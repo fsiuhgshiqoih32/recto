@@ -26,6 +26,8 @@ import { usePreference } from './preferences';
 import { TabBar } from './TabBar';
 import { useBook } from './useBook';
 import { useDrawer, useMediaQuery } from './useDrawer';
+import { LibraryPicker } from './BoxSetDialog';
+import { newBoxSet } from '../model/boxset';
 
 type WorkspaceView = 'format' | 'edit';
 type InspectorTab = 'style' | 'section' | 'book' | 'publish';
@@ -47,6 +49,7 @@ export function App({ initial }: { initial: Book }) {
   const [showPreview, setShowPreview] = usePreference('recto:edit-preview', true);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [boxSetOpen, setBoxSetOpen] = useState(false);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unavailable'>('saved');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -165,7 +168,7 @@ export function App({ initial }: { initial: Book }) {
             </>}
           </DropdownMenu>
           <DropdownMenu label="Books" button={<><Icon name="library" /><span>Books</span><Icon name="chevron" size={12} /></>}>
-            {(close) => <LibraryItems currentId={book.id} onOpen={switchTo} onError={(message) => notify(message, 'error')} close={close} />}
+            {(close) => <LibraryItems currentId={book.id} onOpen={switchTo} onNewBoxSet={() => setBoxSetOpen(true)} onError={(message) => notify(message, 'error')} close={close} />}
           </DropdownMenu>
         </div>
         <div className="book-title" title={book.meta.title}>
@@ -230,6 +233,18 @@ export function App({ initial }: { initial: Book }) {
         {notice && !exporting && <button className="icon-btn" type="button" aria-label="Dismiss status" onClick={() => setNotice(null)}><Icon name="close" size={14} /></button>}
         <span className="status-meta">{themeOf(book).name} · {book.elements.filter((entry) => entry.kind === 'chapter').length} chapters</span>
       </footer>
+      {boxSetOpen && <LibraryPicker
+        title="New box set"
+        intro="Gathers books from this device into one, each as a volume with its own opening page and chapters numbered from one. The box set takes the first book’s style and back matter. Your books stay as they are."
+        confirmLabel="Create box set"
+        multiple
+        onPick={(books) => {
+          const boxSet = newBoxSet(books);
+          switchTo(boxSet);
+          notify(`Created a box set of ${books.length} ${books.length === 1 ? 'book' : 'books'}. Give it a title in Book details.`, 'success');
+        }}
+        onClose={() => setBoxSetOpen(false)}
+      />}
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImport={({ book: imported, summary }) => {
         setImportOpen(false); switchTo(imported);
         notify(`Imported ${imported.elements.filter((entry) => entry.kind === 'chapter').length} chapters (${summary}).`, 'success');
@@ -238,12 +253,13 @@ export function App({ initial }: { initial: Book }) {
   );
 }
 
-function LibraryItems({ currentId, onOpen, onError, close }: { currentId: string; onOpen: (book: Book) => void; onError: (message: string) => void; close: () => void }) {
+function LibraryItems({ currentId, onOpen, onNewBoxSet, onError, close }: { currentId: string; onOpen: (book: Book) => void; onNewBoxSet: () => void; onError: (message: string) => void; close: () => void }) {
   const [books, setBooks] = useState<BookSummary[] | null>(null);
   useEffect(() => { void listBooks().then(setBooks, () => setBooks([])); }, []);
   return <>
     <button type="button" role="menuitem" onClick={() => { close(); onOpen(newBook()); }}><Icon name="plus" />New blank book</button>
     <button type="button" role="menuitem" onClick={() => { close(); onOpen(sampleBook()); }}><Icon name="book" />New copy of the sample book</button>
+    <button type="button" role="menuitem" onClick={() => { close(); onNewBoxSet(); }}><Icon name="library" />New box set…</button>
     <div className="menu-sep" /><div className="menu-label">On this device</div>
     {books === null && <div className="menu-note">Loading…</div>}
     {books?.length === 0 && <div className="menu-note">No saved books yet.</div>}

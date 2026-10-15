@@ -216,3 +216,30 @@ test('adds, reorders and deletes chapters', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
   await expect(nav(page, 'Coda')).toHaveCount(0);
 });
+
+test('gathers books into a box set and adds another volume', async ({ page }) => {
+  await expect(page.locator('.book-sub')).toContainText('Saved in this browser');
+  await page.getByRole('button', { name: 'Books' }).click();
+  await page.getByRole('menuitem', { name: 'New box set…' }).click();
+  const create = page.getByRole('dialog', { name: 'New box set' });
+  await create.getByLabel(/The Lamp at Harrow Point/).check();
+  await create.getByRole('button', { name: 'Create box set' }).click();
+  await expect(page.locator('.book-title')).toContainText('Box Set');
+  await expect(page.locator('.nav-item.is-volume')).toHaveCount(1);
+  await expect(page.locator('.nav-item.is-volume')).toContainText('Book One');
+
+  const chapters = page.locator('.nav-group', { has: page.getByRole('heading', { name: 'Chapters' }) });
+  await chapters.getByRole('button', { name: 'Add element' }).click();
+  await page.getByRole('menuitem', { name: 'Book from your library…' }).click();
+  const add = page.getByRole('dialog', { name: 'Add a volume' });
+  await expect(add.getByText('Box Set')).toHaveCount(0); // not itself
+  await add.getByLabel(/The Lamp at Harrow Point/).check();
+  await add.getByRole('button', { name: 'Add volume' }).click();
+  await expect(page.locator('.nav-item.is-volume')).toHaveCount(2);
+  await expect(page.locator('.nav-item.is-volume').nth(1)).toContainText('Book Two');
+  // Chapter numbers start again in the second volume.
+  await expect(page.locator('.nav-item.in-volume .nav-select[data-num="1"]')).toHaveCount(2);
+  await page.getByRole('tab', { name: 'Section', exact: true }).click();
+  await expect(page.getByText(/Copied from “The Lamp at Harrow Point”/)).toBeVisible();
+  await expect(page.getByLabel('Volume author')).toHaveValue('Mara Quill');
+});
