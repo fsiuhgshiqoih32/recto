@@ -72,6 +72,7 @@ Self-publishing authors usually format books with a dedicated app. The best-know
 - **Preflight.** **Publish → Check the whole book** runs what stores and printers check on upload:
   - page count, blank pages, image resolution after layout, ISBNs, placeholder text, cover size
   - EPUBCheck (via epubcheck-ts) on the built file
+  - an accessibility check of every page of the EPUB with axe-core, the engine DAISY Ace uses
   - names spelled two ways ("Josias" once, "Josiah" seven times)
 - **Any language.** Write in English, Spanish, Russian, Greek, Arabic, Hebrew, Hindi, Thai, Chinese, Japanese, Korean or any other language with a BCP 47 code.
   - Import detects the manuscript's language and text encoding (UTF-8, UTF-16 and legacy code pages such as Windows-1251 or Shift_JIS). Both can be overridden.

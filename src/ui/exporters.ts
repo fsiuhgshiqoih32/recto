@@ -49,13 +49,14 @@ export async function exportStoreEditions(book: Book): Promise<number> {
  * Builds the EPUB and validates it with epubcheck-ts, a port of the EPUBCheck
  * that stores run on upload. Its verdict is advisory; CI runs the official one.
  */
-export async function validateEpub(book: Book): Promise<{ bytes: number; messages: EpubMessage[] }> {
+export async function validateEpub(book: Book): Promise<{ bytes: number; data: Uint8Array; messages: EpubMessage[] }> {
   const { buildEpub } = await import('../export/epub/package');
   const data = await buildEpub(book, { loadFont, pageStarts: await pageStartsFor(book) });
   const { EpubCheck } = await import('@likecoin/epubcheck-ts');
   const result = await EpubCheck.validate(data);
   return {
     bytes: data.length,
+    data,
     messages: result.messages.map((m) => ({ severity: m.severity, id: m.id, message: m.message, path: m.location?.path })),
   };
 }

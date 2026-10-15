@@ -48,6 +48,7 @@ Builds include copies of the installed packages' full license notices in
 | [docx](https://github.com/dolanmiu/docx) | MIT | Word export |
 | [markdown-it-footnote](https://github.com/markdown-it/markdown-it-footnote) | MIT | Footnotes in Markdown import |
 | [css-tree](https://github.com/csstree/csstree) | MIT | Parsing and filtering advanced CSS in the style builder |
+| [axe-core](https://github.com/dequelabs/axe-core) | MPL-2.0 | The accessibility check in the Publish panel. Shipped unmodified; its source is at the link |
 
 ## Tools Recto uses but never ships
 

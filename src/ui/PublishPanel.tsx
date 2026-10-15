@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Book, BookMeta } from '../model/book';
 import { EXEMPTIONS, accessibilityFacts, accessibilityMetadata, storeAnswers } from '../export/epub/accessibility';
-import { AREA_LABEL, type Area, type Finding, SEVERITY_RANK, type Severity, checkBook, checkEpub, checkLayout } from '../preflight/checks';
+import { AREA_LABEL, type Area, type Finding, SEVERITY_RANK, type Severity, checkAccessibility, checkBook, checkEpub, checkLayout } from '../preflight/checks';
 import { estimatePages } from '../export/print/pageCss';
 import { PAPER_LABEL, type Paper, coverWrap } from '../export/cover/wrap';
 import { downloadStoreCover, downloadTemplate, edgeColor, printCover } from './covers';
@@ -35,7 +35,10 @@ export function PublishPanel({ book, actions, onOpen }: { book: Book; actions: B
       const layout = await measurePrintLayout(book);
       setProgress(t('Building and validating the EPUB…'));
       const epub = await validateEpub(book);
-      setFull({ findings: [...checkLayout(book, layout), ...checkEpub(epub.messages, epub.bytes)], updatedAt: book.updatedAt, pages: layout.pages });
+      setProgress(t('Checking accessibility with axe-core…'));
+      const { checkEpubAccessibility } = await import('../preflight/axe');
+      const issues = await checkEpubAccessibility(book, epub.data);
+      setFull({ findings: [...checkLayout(book, layout), ...checkEpub(epub.messages, epub.bytes), ...checkAccessibility(book, issues)], updatedAt: book.updatedAt, pages: layout.pages });
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     } finally {

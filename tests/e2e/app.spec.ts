@@ -271,3 +271,19 @@ test('shows the interface in the chosen language', async ({ page }) => {
   await page.getByRole('menuitemradio', { name: 'English' }).click();
   await expect(page.getByRole('button', { name: 'Export', exact: true })).toBeVisible();
 });
+
+test('checks the EPUB’s accessibility with axe-core', async ({ page }) => {
+  test.setTimeout(240_000);
+  // Pale grey text on white fails WCAG contrast.
+  await page.getByRole('tab', { name: 'Style', exact: true }).click();
+  await page.getByText('Customize Octavo').click();
+  await page.locator('.css-input').fill('.el p { color: #d8d8d8; }');
+  await page.getByRole('button', { name: 'Apply CSS' }).click();
+  await expect(page.getByText(/Applied 1 rule/)).toBeVisible();
+  await page.getByRole('tab', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Check the whole book' }).click();
+  await expect(page.getByRole('button', { name: 'Check again' })).toBeVisible({ timeout: 200_000 });
+  const accessibility = page.locator('.finding-group', { has: page.getByRole('heading', { name: 'Accessibility' }) });
+  await expect(accessibility).toContainText(/color contrast/i);
+  await expect(accessibility).toContainText(/axe-core rule color-contrast/);
+});

@@ -10,6 +10,7 @@ import { imageInfo } from './images';
 import { isbn13, isbnProblem } from './isbn';
 import { nameVariants } from './names';
 import { N_, t } from '../i18n/ui';
+import type { AxeIssue } from './axe';
 
 export type Severity = 'error' | 'warning' | 'info' | 'ok';
 export type Area = 'details' | 'text' | 'print' | 'ebook' | 'accessibility';
@@ -28,7 +29,7 @@ export const AREA_LABEL: Record<Area, string> = {
   text: N_('Text'),
   print: N_('Print edition'),
   ebook: N_('Ebook'),
-  accessibility: N_('Image descriptions'),
+  accessibility: N_('Accessibility'),
 };
 
 /** KDP's recommended image resolution, and the point below which prints look soft. */
@@ -265,6 +266,29 @@ export function checkEpub(messages: EpubMessage[], bytes: number): Finding[] {
     detail: t('At KDP’s 70% royalty, delivery costs {fee} per sale in the US store (${rate} per MB).', { fee: feeText(bytes), rate: KDP_DELIVERY_PER_MB.toFixed(2) }),
   });
   return findings;
+}
+
+/** The axe-core results on the built EPUB: one finding per rule broken, at the first section it's broken in. */
+export function checkAccessibility(book: Book, issues: AxeIssue[]): Finding[] {
+  if (!issues.length) {
+    return [{ area: 'accessibility', severity: 'ok', title: t('No accessibility problems found'), detail: t('Every page of the EPUB was checked with axe-core, the engine DAISY Ace uses, against WCAG 2.2 A and AA.') }];
+  }
+  const byRule = new Map<string, AxeIssue[]>();
+  for (const issue of issues) byRule.set(issue.rule, [...(byRule.get(issue.rule) ?? []), issue]);
+  return [...byRule.values()].map((found) => {
+    const [first] = found;
+    const count = found.reduce((n, issue) => n + issue.count, 0);
+    const el = book.elements.find((e) => e.id === found.find((issue) => issue.elementId)?.elementId);
+    return {
+      area: 'accessibility' as const,
+      severity: first.impact === 'critical' || first.impact === 'serious' ? ('warning' as const) : ('info' as const),
+      title: first.help,
+      detail: el
+        ? t('{count} places, first in “{section}” (axe-core rule {rule}).', { count, section: elementName(el), rule: first.rule })
+        : t('{count} places (axe-core rule {rule}).', { count, rule: first.rule }),
+      elementId: el?.id,
+    };
+  });
 }
 
 export const SEVERITY_RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2, ok: 3 };

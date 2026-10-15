@@ -6,7 +6,7 @@
 - **Images** on their own page, full bleed or across a spread; heading images; print bleed.
 - **Box sets**: gather books as volumes, with nested contents and chapter numbers that start again in each volume.
 - **Style builder**: change fonts, headings, ornaments and spacing, add filtered CSS, and share the result as a style pack.
-- **Publish panel**: a preflight check (page count, blank pages, image resolution, ISBNs, EPUBCheck, names spelled two ways), store and paperback covers with spine width, and accessibility answers for store forms.
+- **Publish panel**: a preflight check (page count, blank pages, image resolution, ISBNs, EPUBCheck, an accessibility check with axe-core, names spelled two ways), store and paperback covers with spine width, and accessibility answers for store forms.
 - **More exports**: one EPUB per store, print page numbers in the ebook, vertical Japanese and Chinese ebooks, a PDF for reading, Word documents, and PDF/X-1a (or PDF/X-3 with Ghostscript before 10.05) through an installed Ghostscript.
 - **20 trim sizes** for paperback and hardcover, in inches or millimetres, and a large-print edition.
 - **Desktop**: save in place (with a warning if the file changed elsewhere), Help → Check for Updates, and Preview in Kindle Previewer.
