@@ -43,6 +43,21 @@ Builds include copies of the installed packages' full license notices in
 | [React](https://react.dev) | MIT | User interface |
 | [hyphen](https://github.com/ytiurin/hyphen) | ISC | Print hyphenation. Its patterns come from the TeX [hyph-utf8](https://github.com/hyphenation/tex-hyphen) project, and each language's patterns keep their original license there |
 | [Electron](https://www.electronjs.org) | MIT | Desktop app. The installer also ships Chromium's license file (`LICENSES.chromium.html`) |
+| [epubcheck-ts](https://github.com/likecoin/epubcheck-ts) | BSD-3-Clause | EPUB validation in the Publish panel. It bundles [libxml2-wasm](https://github.com/jameslan/libxml2-wasm) (MIT, with libxml2 under the MIT license) and fflate (MIT) |
+| [@pdfme/pdf-lib](https://github.com/pdfme/pdf-lib) | MIT | PDF metadata, TrimBox and BleedBox |
+| [docx](https://github.com/dolanmiu/docx) | MIT | Word export |
+| [markdown-it-footnote](https://github.com/markdown-it/markdown-it-footnote) | MIT | Footnotes in Markdown import |
+| [css-tree](https://github.com/csstree/csstree) | MIT | Parsing and filtering advanced CSS in the style builder |
+
+## Tools Recto uses but never ships
+
+- **Ghostscript** (AGPL-3.0 or commercial, Artifex): the desktop app and `npm run pdf -- --pdfx` run a copy the author installed themselves to make PDF/X-1a files. Recto doesn't include or modify it.
+- **Kindle Previewer 3** (proprietary, Amazon): the desktop app opens EPUBs in it when it's installed.
+- **EPUBCheck** (BSD-3-Clause, W3C) and **DAISY Ace** (MIT): CI runs them on sample books.
+
+## Style packs
+
+The packs in `style-packs/` are dedicated to the public domain under CC0 1.0, and so must any pack added there.
 
 ## Sample text
 
