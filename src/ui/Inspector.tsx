@@ -17,6 +17,7 @@ import { listBooks, loadBook } from '../store/db';
 import { Field, Toggle } from './fields';
 import { StyleBuilder } from './StyleBuilder';
 import { canBeVertical } from '../export/epub/vertical';
+import { t, uiLanguage } from '../i18n/ui';
 
 const UNITS = [{ id: 'in', label: 'in' }, { id: 'mm', label: 'mm' }] as const;
 
@@ -34,21 +35,21 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
   const trim = TRIMS[style.trim];
   const range = pageRange(binding);
   const printers = printersFor(trim, binding);
-  const trimHint =
-    `About ${pages} pages. ` +
-    (printers.length ? `${printers.join(' and ')} print${printers.length === 1 ? 's' : ''} this size` : `KDP doesn't offer this size as a ${binding}`) +
-    `; ${range.printer} takes ${range.min}–${range.max} pages. The inside margin grows with the page count (at least ${kdpMinInside(pages)} in here).`;
+  const printerNote = !printers.length
+    ? binding === 'hardcover' ? t('KDP doesn’t offer this size as a hardcover') : t('KDP doesn’t offer this size as a paperback')
+    : printers.length === 1 ? t('{printer} prints this size', { printer: printers[0] }) : t('{printers} print this size', { printers: printers.join(t(' and ')) });
+  const trimHint = `${t('About {pages} pages.', { pages })} ${printerNote}; ${t('{printer} takes {min}–{max} pages. The inside margin grows with the page count (at least {inside} in here).', { printer: t(range.printer), min: range.min, max: range.max, inside: kdpMinInside(pages) })}`;
   const changeBinding = (next: Binding) => {
     const allowed = (Object.keys(TRIMS) as TrimId[]).filter((id) => (next === 'hardcover' ? TRIMS[id].printers.includes('kdp-hardcover') : TRIMS[id].printers.some((p) => p !== 'kdp-hardcover')));
     actions.updateStyle({ binding: next, trim: allowed.includes(style.trim) ? style.trim : nearestTrim(style.trim, allowed) });
   };
   const lang = book.meta.language;
   const { dir } = languageInfo(lang);
-  const sampleTitle = book.elements.find((el) => el.kind === 'chapter' && el.numbered !== false && el.title.trim())?.title ?? 'The Inventory';
+  const sampleTitle = book.elements.find((el) => el.kind === 'chapter' && el.numbered !== false && el.title.trim())?.title ?? t('The Inventory');
   return (
     <div className="panel-body">
-      <h3 className="panel-heading">Book style</h3>
-      <div className="theme-grid" role="radiogroup" aria-label="Book style">
+      <h3 className="panel-heading">{t('Book style')}</h3>
+      <div className="theme-grid" role="radiogroup" aria-label={t('Book style')}>
         {THEME_LIST.map((theme) => (
           <button
             key={theme.id}
@@ -72,7 +73,7 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
               <span className={`theme-sample-title theme-${theme.id}`}>{sampleTitle}</span>
               <span className="theme-sample-orn" dangerouslySetInnerHTML={{ __html: ORNAMENTS[theme.ornament] }} />
             </span>
-            <span className="theme-description"><span className="theme-name">{theme.name}</span><span className="theme-blurb">{theme.blurb}</span></span>
+            <span className="theme-description"><span className="theme-name">{theme.name}</span><span className="theme-blurb">{t(theme.blurb)}</span></span>
             <span className="style-check" aria-hidden="true"><Icon name="check" size={13} /></span>
           </button>
         ))}
@@ -80,17 +81,17 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
 
       <StyleBuilder key={book.id} book={book} actions={actions} />
 
-      <h3 className="panel-heading">Print</h3>
-      <Field label="Binding">
+      <h3 className="panel-heading">{t('Print')}</h3>
+      <Field label={t('Binding')}>
         <select value={binding} onChange={(e) => changeBinding(e.target.value as Binding)}>
-          <option value="paperback">Paperback</option>
-          <option value="hardcover">Hardcover (case laminate)</option>
+          <option value="paperback">{t('Paperback')}</option>
+          <option value="hardcover">{t('Hardcover (case laminate)')}</option>
         </select>
       </Field>
       <div className="field">
         <div className="field-label-row">
-          <label className="field-label" htmlFor="trim-size">Trim size</label>
-          <div className="segmented segmented-small units-switch" role="radiogroup" aria-label="Units"
+          <label className="field-label" htmlFor="trim-size">{t('Trim size')}</label>
+          <div className="segmented segmented-small units-switch" role="radiogroup" aria-label={t('Units')}
             style={{ '--tab-count': UNITS.length, '--tab-index': UNITS.findIndex((u) => u.id === units) } as CSSProperties}>
             <span className="tab-indicator" aria-hidden="true" />
             {UNITS.map((u) => (
@@ -102,7 +103,7 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
           {TRIM_GROUPS.map((group) => {
             const ids = group.ids.filter((id) => binding === 'paperback' ? !TRIMS[id].printers.every((p) => p === 'kdp-hardcover') : TRIMS[id].printers.includes('kdp-hardcover'));
             return ids.length ? (
-              <optgroup key={group.label} label={group.label}>
+              <optgroup key={group.label} label={t(group.label)}>
                 {ids.map((id) => <option key={id} value={id}>{trimLabel(TRIMS[id], units)}</option>)}
               </optgroup>
             ) : null;
@@ -110,57 +111,57 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
         </select>
         <span className="field-hint">{trimHint}</span>
       </div>
-      <Field label="Right-hand running head">
+      <Field label={t('Right-hand running head')}>
         <select value={style.rectoHeader} onChange={(e) => actions.updateStyle({ rectoHeader: e.target.value as 'title' | 'chapter' })}>
-          <option value="title">Book title</option>
-          <option value="chapter">Chapter title</option>
+          <option value="title">{t('Book title')}</option>
+          <option value="chapter">{t('Chapter title')}</option>
         </select>
       </Field>
       <Toggle
         checked={style.startOnRecto}
         onChange={(startOnRecto) => actions.updateStyle({ startOnRecto })}
-        label="Chapters start on a right-hand page"
-        hint="Blank left-hand pages are added where needed."
+        label={t('Chapters start on a right-hand page')}
+        hint={t('Blank left-hand pages are added where needed.')}
       />
       <Toggle
         checked={!!style.bleed}
         onChange={(bleed) => actions.updateStyle({ bleed })}
-        label="Print with bleed"
-        hint="Pages grow 0.125 in past the trim at the top, bottom and outside edge, so full-page images can run off the edge. Turn it on only if the book has such images."
+        label={t('Print with bleed')}
+        hint={t('Pages grow 0.125 in past the trim at the top, bottom and outside edge, so full-page images can run off the edge. Turn it on only if the book has such images.')}
       />
-      <Field label="Notes in print" hint="Ebooks always show notes as pop-up footnotes.">
+      <Field label={t('Notes in print')} hint={t('Ebooks always show notes as pop-up footnotes.')}>
         <select value={style.notes ?? 'chapter'} onChange={(e) => actions.updateStyle({ notes: e.target.value as 'chapter' | 'book' | 'page' })}>
-          <option value="chapter">At the end of each chapter</option>
-          <option value="book">In a Notes section at the end of the book</option>
-          <option value="page">At the foot of the page (footnotes)</option>
+          <option value="chapter">{t('At the end of each chapter')}</option>
+          <option value="book">{t('In a Notes section at the end of the book')}</option>
+          <option value="page">{t('At the foot of the page (footnotes)')}</option>
         </select>
       </Field>
 
-      <h3 className="panel-heading">Text</h3>
-      <Toggle checked={style.dropCaps} onChange={(dropCaps) => actions.updateStyle({ dropCaps })} label="Drop caps" hint="Used by styles that have them." />
+      <h3 className="panel-heading">{t('Text')}</h3>
+      <Toggle checked={style.dropCaps} onChange={(dropCaps) => actions.updateStyle({ dropCaps })} label={t('Drop caps')} hint={t('Used by styles that have them.')} />
       <Toggle
         checked={!!style.largePrint}
         onChange={(largePrint) => actions.updateStyle({ largePrint })}
-        label="Large-print edition"
-        hint="16 pt type, ragged right, no hyphenation; best at 6 × 9 in or larger. A large-print paperback needs its own ISBN."
+        label={t('Large-print edition')}
+        hint={t('16 pt type, ragged right, no hyphenation; best at 6 × 9 in or larger. A large-print paperback needs its own ISBN.')}
       />
       <Toggle
         checked={style.embedFonts}
         onChange={(embedFonts) => actions.updateStyle({ embedFonts })}
-        label="Embed fonts in the ebook"
-        hint="Off lets readers use their own fonts, which most stores prefer."
+        label={t('Embed fonts in the ebook')}
+        hint={t('Off lets readers use their own fonts, which most stores prefer.')}
       />
       {canBeVertical(book.meta.language) && <Toggle
         checked={!!style.verticalText}
         onChange={(verticalText) => actions.updateStyle({ verticalText })}
-        label="Vertical text in the ebook"
-        hint="Top to bottom, columns right to left, with short numbers set upright. The print edition stays horizontal."
+        label={t('Vertical text in the ebook')}
+        hint={t('Top to bottom, columns right to left, with short numbers set upright. The print edition stays horizontal.')}
       />}
       <Toggle
         checked={!!style.printPageNumbers}
         onChange={(printPageNumbers) => actions.updateStyle({ printPageNumbers })}
-        label="Print page numbers in the ebook"
-        hint={`Readers and screen readers can go to a page of the paperback, and Kindle shows real page numbers. EPUB export lays out the print edition first, so it takes a little longer.${style.printPageNumbers && !book.meta.isbnPrint.trim() ? ' Add the paperback ISBN in Book details to name the edition the numbers come from.' : ''}`}
+        label={t('Print page numbers in the ebook')}
+        hint={t('Readers and screen readers can go to a page of the paperback, and Kindle shows real page numbers. EPUB export lays out the print edition first, so it takes a little longer.') + (style.printPageNumbers && !book.meta.isbnPrint.trim() ? ` ${t('Add the paperback ISBN in Book details to name the edition the numbers come from.')}` : '')}
       />
     </div>
   );
@@ -174,24 +175,24 @@ export function SectionPanel({ book, element, actions, onEdit, onShowBookDetails
   const volume = element.kind === 'volume';
   const headless = ['copyright', 'dedication', 'epigraph'].includes(element.kind);
   return <div className="panel-body section-panel">
-    <h3 className="panel-heading">{KIND_LABEL[element.kind]} settings</h3>
-    <Field label={headless ? 'Name in the navigator' : 'Section title'}>
-      <input value={element.title} lang={book.meta.language} dir="auto" onChange={(event) => update({ title: event.target.value })} placeholder="Untitled" />
+    <h3 className="panel-heading">{t('{kind} settings', { kind: t(KIND_LABEL[element.kind]) })}</h3>
+    <Field label={headless ? t('Name in the navigator') : t('Section title')}>
+      <input value={element.title} lang={book.meta.language} dir="auto" onChange={(event) => update({ title: event.target.value })} placeholder={t('Untitled')} />
     </Field>
-    {(element.kind === 'chapter' || volume) && <Field label="Section subtitle"><input value={element.subtitle ?? ''} lang={book.meta.language} dir="auto" onChange={(event) => update({ subtitle: event.target.value })} placeholder="Optional" /></Field>}
-    {volume && <Field label="Volume author" hint="When volumes have different authors, each volume’s opening page, running heads and the ebook’s metadata name them.">
-      <input value={element.volume?.author ?? ''} dir="auto" onChange={(event) => update({ volume: { ...element.volume, author: event.target.value } })} placeholder={book.meta.author || 'Same as the box set'} />
+    {(element.kind === 'chapter' || volume) && <Field label={t('Section subtitle')}><input value={element.subtitle ?? ''} lang={book.meta.language} dir="auto" onChange={(event) => update({ subtitle: event.target.value })} placeholder={t('Optional')} /></Field>}
+    {volume && <Field label={t('Volume author')} hint={t('When volumes have different authors, each volume’s opening page, running heads and the ebook’s metadata name them.')}>
+      <input value={element.volume?.author ?? ''} dir="auto" onChange={(event) => update({ volume: { ...element.volume, author: event.target.value } })} placeholder={book.meta.author || t('Same as the box set')} />
     </Field>}
-    {chapterLike && <Toggle checked={element.numbered !== false} onChange={(numbered) => update({ numbered })} label="Numbered" hint={volume ? 'Book One, Book Two… Chapter numbers start again in each volume.' : 'Chapter numbers update automatically.'} />}
+    {chapterLike && <Toggle checked={element.numbered !== false} onChange={(numbered) => update({ numbered })} label={t('Numbered')} hint={volume ? t('Book One, Book Two… Chapter numbers start again in each volume.') : t('Chapter numbers update automatically.')} />}
     {volume && element.volume?.source && <VolumeSource book={book} element={element} actions={actions} />}
     {chapterLike && (
       <div className="field">
-        <span className="field-label">Heading image</span>
+        <span className="field-label">{t('Heading image')}</span>
         <div className="cover-row">
           {element.headingImage ? <img className="heading-thumb" src={element.headingImage} alt="" /> : null}
           <div className="cover-actions">
             <label className="btn">
-              {element.headingImage ? 'Replace…' : 'Choose image…'}
+              {element.headingImage ? t('Replace…') : t('Choose image…')}
               <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
@@ -202,26 +203,26 @@ export function SectionPanel({ book, element, actions, onEdit, onShowBookDetails
                 e.target.value = '';
               }} />
             </label>
-            {element.headingImage && <button type="button" className="btn btn-quiet" onClick={() => update({ headingImage: undefined })}>Remove</button>}
-            <span className="field-hint">Shown above the heading, in both editions. Decorative, so screen readers skip it.</span>
+            {element.headingImage && <button type="button" className="btn btn-quiet" onClick={() => update({ headingImage: undefined })}>{t('Remove')}</button>}
+            <span className="field-hint">{t('Shown above the heading, in both editions. Decorative, so screen readers skip it.')}</span>
           </div>
         </div>
       </div>
     )}
-    {element.kind !== 'title-page' && <Toggle checked={element.includeInToc} onChange={(includeInToc) => update({ includeInToc })} label="Listed in contents" />}
-    <Field label="Include in" hint={element.include === 'ebook' ? 'Left out of the print edition: a newsletter sign-up or store links, for example.' : element.include === 'print' ? 'Left out of the ebook: an order form or a printed-edition note, for example.' : undefined}>
+    {element.kind !== 'title-page' && <Toggle checked={element.includeInToc} onChange={(includeInToc) => update({ includeInToc })} label={t('Listed in contents')} />}
+    <Field label={t('Include in')} hint={element.include === 'ebook' ? t('Left out of the print edition: a newsletter sign-up or store links, for example.') : element.include === 'print' ? t('Left out of the ebook: an order form or a printed-edition note, for example.') : undefined}>
       <select value={element.include ?? 'both'} onChange={(event) => update({ include: event.target.value === 'both' ? undefined : (event.target.value as Edition) })}>
-        <option value="both">Ebook and print</option>
-        <option value="ebook">Ebook only</option>
-        <option value="print">Print only</option>
+        <option value="both">{t('Ebook and print')}</option>
+        <option value="ebook">{t('Ebook only')}</option>
+        <option value="print">{t('Print only')}</option>
       </select>
     </Field>
-    {element.kind === 'toc' && isBoxSet(book) && <Toggle checked={!book.style.contentsVolumesOnly} onChange={(all) => actions.updateStyle({ contentsVolumesOnly: !all })} label="List each volume’s chapters" hint="Off: the contents page lists only the volumes. The ebook’s navigation menu always lists every chapter." />}
-    {headless && <p className="field-hint">This page prints without a heading.</p>}
+    {element.kind === 'toc' && isBoxSet(book) && <Toggle checked={!book.style.contentsVolumesOnly} onChange={(all) => actions.updateStyle({ contentsVolumesOnly: !all })} label={t('List each volume’s chapters')} hint={t('Off: the contents page lists only the volumes. The ebook’s navigation menu always lists every chapter.')} />}
+    {headless && <p className="field-hint">{t('This page prints without a heading.')}</p>}
     {GENERATED_KINDS.has(element.kind) ? <div className="section-note">
-      <p>{element.kind === 'toc' ? 'Recto generates this page from sections listed in contents. Print editions include page numbers; ebooks include links.' : 'Recto generates this page from your book details.'}</p>
-      {element.kind === 'title-page' && <button className="btn" type="button" onClick={onShowBookDetails}>Edit book details</button>}
-    </div> : <button className="btn section-edit" type="button" onClick={onEdit}><Icon name="edit" />Edit section text</button>}
+      <p>{element.kind === 'toc' ? t('Recto generates this page from sections listed in contents. Print editions include page numbers; ebooks include links.') : t('Recto generates this page from your book details.')}</p>
+      {element.kind === 'title-page' && <button className="btn" type="button" onClick={onShowBookDetails}>{t('Edit book details')}</button>}
+    </div> : <button className="btn section-edit" type="button" onClick={onEdit}><Icon name="edit" />{t('Edit section text')}</button>}
   </div>;
 }
 
@@ -238,41 +239,41 @@ export function BookPanel({ book, actions, spellcheckNote }: { book: Book; actio
 
   return (
     <div className="panel-body">
-      <h3 className="panel-heading">Book details</h3>
-      <Field label="Title">
+      <h3 className="panel-heading">{t('Book details')}</h3>
+      <Field label={t('Title')}>
         <input value={meta.title} onChange={set('title')} />
       </Field>
-      <Field label="Subtitle">
+      <Field label={t('Subtitle')}>
         <input value={meta.subtitle} onChange={set('subtitle')} />
       </Field>
-      <Field label="Author">
+      <Field label={t('Author')}>
         <input value={meta.author} onChange={set('author')} />
       </Field>
-      <Field label="Publisher" hint="Optional. Shown at the foot of the title page.">
+      <Field label={t('Publisher')} hint={t('Optional. Shown at the foot of the title page.')}>
         <input value={meta.publisher} onChange={set('publisher')} />
       </Field>
-      <LanguagePicker label="Language" value={meta.language} onChange={(language) => actions.updateMeta({ language })} hint={spellcheckNote} />
-      <Field label="Copyright year">
+      <LanguagePicker label={t('Language')} value={meta.language} onChange={(language) => actions.updateMeta({ language })} hint={spellcheckNote} />
+      <Field label={t('Copyright year')}>
         <input value={meta.copyrightYear} inputMode="numeric" onChange={set('copyrightYear')} />
       </Field>
       <div className="field-row">
-        <Field label="Ebook ISBN">
-          <input value={meta.isbnEbook} onChange={set('isbnEbook')} placeholder="Optional" />
+        <Field label={t('Ebook ISBN')}>
+          <input value={meta.isbnEbook} onChange={set('isbnEbook')} placeholder={t('Optional')} />
         </Field>
-        <Field label="Paperback ISBN">
-          <input value={meta.isbnPrint} onChange={set('isbnPrint')} placeholder="Optional" />
+        <Field label={t('Paperback ISBN')}>
+          <input value={meta.isbnPrint} onChange={set('isbnPrint')} placeholder={t('Optional')} />
         </Field>
       </div>
-      <Field label="Description" hint="Goes into the ebook's metadata.">
+      <Field label={t('Description')} hint={t('Goes into the ebook\'s metadata.')}>
         <textarea rows={3} value={meta.description} onChange={set('description')} />
       </Field>
 
-      <h3 className="panel-heading">Ebook cover</h3>
+      <h3 className="panel-heading">{t('Ebook cover')}</h3>
       <div className="cover-row">
-        {meta.cover ? <img className="cover-thumb" src={meta.cover} alt="Cover" /> : <div className="cover-thumb is-empty">No cover</div>}
+        {meta.cover ? <img className="cover-thumb" src={meta.cover} alt={t('Cover')} /> : <div className="cover-thumb is-empty">{t('No cover')}</div>}
         <div className="cover-actions">
           <label className="btn">
-            {meta.cover ? 'Replace…' : 'Choose image…'}
+            {meta.cover ? t('Replace…') : t('Choose image…')}
             <input
               type="file"
               accept="image/jpeg,image/png"
@@ -286,15 +287,15 @@ export function BookPanel({ book, actions, spellcheckNote }: { book: Book; actio
           </label>
           {meta.cover && (
             <button type="button" className="btn btn-quiet" onClick={() => actions.updateMeta({ cover: undefined })}>
-              Remove
+              {t('Remove')}
             </button>
           )}
-          <span className="field-hint">JPEG or PNG, ideally 1600 × 2560 px. Used for the ebook only.</span>
+          <span className="field-hint">{t('JPEG or PNG, ideally 1600 × 2560 px. Used for the ebook only.')}</span>
         </div>
       </div>
 
       <p className="stats">
-        {words.toLocaleString()} words · {book.elements.length} elements
+        {t('{count} words', { count: words.toLocaleString() })} · {t('{count} elements', { count: book.elements.length })}
       </p>
     </div>
   );
@@ -316,20 +317,20 @@ function VolumeSource({ book, element, actions }: { book: Book; element: BookEle
   const changed = !!library && library.updatedAt > source.syncedAt;
   const update = async () => {
     const chapters = volumeMembers(book, element.id).length;
-    if (!window.confirm(`Replace the ${chapters} sections in this volume with the current ones from “${source.title}”? Edits made to them in this box set will be lost.`)) return;
+    if (!window.confirm(t('Replace the {count} sections in this volume with the current ones from “{title}”? Edits made to them in this box set will be lost.', { count: chapters, title: source.title }))) return;
     try {
       const latest = await loadBook(source.bookId);
       if (!latest) throw new Error('missing');
       actions.updateVolume(element.id, latest);
-      setMessage('Updated from the library.');
+      setMessage(t('Updated from the library.'));
     } catch (e) {
-      setMessage(e instanceof Error && e.message !== 'missing' ? e.message : 'That book is no longer on this device.');
+      setMessage(e instanceof Error && e.message !== 'missing' ? e.message : t('That book is no longer on this device.'));
     }
   };
   return <div className="volume-source">
-    <p>Copied from “{source.title}” on {new Date(source.syncedAt).toLocaleDateString()}.{' '}
-      {library === null ? 'That book is no longer on this device.' : changed ? 'It has changed since.' : library ? 'It hasn’t changed since.' : ''}</p>
-    {library && <button type="button" className="btn" onClick={() => void update()}>{changed ? 'Update from the library' : 'Copy it again'}</button>}
+    <p>{t('Copied from “{title}” on {date}.', { title: source.title, date: new Date(source.syncedAt).toLocaleDateString(uiLanguage()) })}{' '}
+      {library === null ? t('That book is no longer on this device.') : changed ? t('It has changed since.') : library ? t('It hasn’t changed since.') : ''}</p>
+    {library && <button type="button" className="btn" onClick={() => void update()}>{changed ? t('Update from the library') : t('Copy it again')}</button>}
     {message && <p role="status" className="field-hint">{message}</p>}
   </div>;
 }

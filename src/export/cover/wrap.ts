@@ -6,12 +6,13 @@
 
 import type { Book } from '../../model/book';
 import { TRIMS } from '../print/trims';
+import { N_ } from '../../i18n/ui';
 
 export type Paper = 'white' | 'cream' | 'color';
 
 /** Inches of spine per page. */
 export const PAPER_THICKNESS: Record<Paper, number> = { white: 0.002252, cream: 0.0025, color: 0.002347 };
-export const PAPER_LABEL: Record<Paper, string> = { white: 'White paper', cream: 'Cream paper', color: 'Premium color' };
+export const PAPER_LABEL: Record<Paper, string> = { white: N_('White paper'), cream: N_('Cream paper'), color: N_('Premium color') };
 
 /** Bleed beyond the trim on every outer edge, in inches. */
 export const BLEED = 0.125;

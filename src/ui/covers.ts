@@ -6,6 +6,7 @@ import { fontUrl } from '../preview/assets';
 import { pdfFinish } from '../export/print/paged';
 import { fileNameFor } from '../store/file';
 import { downloadBlob } from './exporters';
+import { t } from '../i18n/ui';
 
 /** KDP's ideal ebook cover height; stores scale down from there. */
 const STORE_HEIGHT = 2560;
@@ -37,12 +38,12 @@ export async function storeCoverJpeg(cover: string): Promise<{ blob: Blob; width
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, 0, 0, width, height);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-  if (!blob) throw new Error('The cover could not be converted to JPEG.');
+  if (!blob) throw new Error(t('The cover could not be converted to JPEG.'));
   return { blob, width, height };
 }
 
 export async function downloadStoreCover(book: Book): Promise<{ width: number; height: number }> {
-  if (!book.meta.cover) throw new Error('Add a cover in the Book tab first.');
+  if (!book.meta.cover) throw new Error(t('Add a cover in the Book tab first.'));
   const { blob, width, height } = await storeCoverJpeg(book.meta.cover);
   downloadBlob(blob, fileNameFor(book, 'jpg').replace(/\.jpg$/, '-cover.jpg'));
   return { width, height };
@@ -92,7 +93,7 @@ export async function printCover(book: Book, wrap: CoverWrap, background: string
   document.body.appendChild(frame);
   try {
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('The cover took too long to lay out.')), 60_000);
+      const timeout = setTimeout(() => reject(new Error(t('The cover took too long to lay out.'))), 60_000);
       const onMessage = (e: MessageEvent<{ type?: string }>) => {
         if (e.source !== frame.contentWindow || e.data?.type !== 'recto:cover') return;
         clearTimeout(timeout);

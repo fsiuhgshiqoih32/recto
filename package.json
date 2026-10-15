@@ -28,6 +28,7 @@
     "test:watch": "vitest",
     "test:pdf": "tsx scripts/check-pdf.ts",
     "test:epub": "tsx scripts/check-epub.ts",
+    "i18n": "tsx scripts/i18n-extract.ts",
     "test:e2e": "playwright test",
     "pdf": "tsx cli/pdf.ts",
     "epub": "tsx cli/epub.ts",

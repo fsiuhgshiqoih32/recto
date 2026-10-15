@@ -10,6 +10,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TextAlign from '@tiptap/extension-text-align';
 import StarterKit from '@tiptap/starter-kit';
 import type { CalloutTone, InlineNode, Store } from '../model/book';
+import { t } from '../i18n/ui';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -201,7 +202,7 @@ export const Note = Node.create({
       const dom = document.createElement('button');
       dom.type = 'button';
       dom.className = 'note-marker';
-      dom.setAttribute('aria-label', 'Edit note');
+      dom.setAttribute('aria-label', t('Edit note'));
       dom.contentEditable = 'false';
       dom.addEventListener('mousedown', (event) => event.preventDefault());
       dom.addEventListener('click', () => {
@@ -261,11 +262,11 @@ export const StoreLinks = Node.create({
         label.textContent = attrs.label || 'Buy now';
         const meta = document.createElement('span');
         meta.className = 'store-links-meta';
-        meta.textContent = count ? `Store link · ${count} ${count === 1 ? 'store' : 'stores'}` : 'Store link · no addresses yet';
+        meta.textContent = !count ? t('Store link · no addresses yet') : count === 1 ? t('Store link · 1 store') : t('Store link · {count} stores', { count });
         const edit = document.createElement('button');
         edit.type = 'button';
         edit.className = 'btn btn-quiet';
-        edit.textContent = 'Edit links';
+        edit.textContent = t('Edit links');
         edit.addEventListener('click', () => {
           const pos = typeof getPos === 'function' ? getPos() : undefined;
           if (typeof pos === 'number') editor.view.dom.dispatchEvent(new CustomEvent('recto:edit-store-links', { detail: { pos }, bubbles: true }));

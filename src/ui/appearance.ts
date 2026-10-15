@@ -3,6 +3,7 @@
 // choice before first paint so there's no flash of the wrong theme.
 
 import { useEffect, useState } from 'react';
+import { N_ } from '../i18n/ui';
 
 export type UiThemeId = 'paper' | 'sepia' | 'slate' | 'ink' | 'midnight' | 'evergreen';
 export type UiThemeChoice = UiThemeId | 'system';
@@ -16,12 +17,12 @@ export interface UiTheme {
 }
 
 export const UI_THEMES: UiTheme[] = [
-  { id: 'paper', name: 'Paper', dark: false, swatch: ['#f2eee6', '#faf8f4', '#b0361f'] },
-  { id: 'sepia', name: 'Sepia', dark: false, swatch: ['#ebe0cc', '#f5eddf', '#2c6a55'] },
-  { id: 'slate', name: 'Slate', dark: false, swatch: ['#e9edf1', '#f6f8fa', '#2a58a6'] },
-  { id: 'ink', name: 'Ink', dark: true, swatch: ['#141311', '#1b1a18', '#f08a6e'] },
-  { id: 'midnight', name: 'Midnight', dark: true, swatch: ['#0c101b', '#121726', '#8db2ff'] },
-  { id: 'evergreen', name: 'Evergreen', dark: true, swatch: ['#0e1512', '#151d19', '#d9b35f'] },
+  { id: 'paper', name: N_('Paper'), dark: false, swatch: ['#f2eee6', '#faf8f4', '#b0361f'] },
+  { id: 'sepia', name: N_('Sepia'), dark: false, swatch: ['#ebe0cc', '#f5eddf', '#2c6a55'] },
+  { id: 'slate', name: N_('Slate'), dark: false, swatch: ['#e9edf1', '#f6f8fa', '#2a58a6'] },
+  { id: 'ink', name: N_('Ink'), dark: true, swatch: ['#141311', '#1b1a18', '#f08a6e'] },
+  { id: 'midnight', name: N_('Midnight'), dark: true, swatch: ['#0c101b', '#121726', '#8db2ff'] },
+  { id: 'evergreen', name: N_('Evergreen'), dark: true, swatch: ['#0e1512', '#151d19', '#d9b35f'] },
 ];
 
 /** What "System" resolves to. */

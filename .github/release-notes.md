@@ -1,6 +1,7 @@
 ## What's new in 0.3
 
 - **macOS and Linux apps**, alongside Windows.
+- **The interface in German, Spanish and French**, as well as English.
 - **Footnotes and endnotes**, lists, verse, callout boxes, tables, text-message bubbles and store-link buttons.
 - **Images** on their own page, full bleed or across a spread; heading images; print bleed.
 - **Box sets**: gather books as volumes, with nested contents and chapter numbers that start again in each volume.

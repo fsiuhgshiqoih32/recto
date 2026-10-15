@@ -9,11 +9,14 @@ import { DropdownMenu } from './DropdownMenu';
 import { createFlip } from './motion';
 import { LibraryPicker } from './BoxSetDialog';
 import { elementsInVolumes } from '../model/boxset';
+import { N_, t } from '../i18n/ui';
+
+const UNNUMBERED: Record<'chapter' | 'part' | 'volume', string> = { chapter: N_('Unnumbered chapter'), part: N_('Unnumbered part'), volume: N_('Unnumbered volume') };
 
 const GROUPS: { matter: Matter; title: string }[] = [
-  { matter: 'front', title: 'Front matter' },
-  { matter: 'body', title: 'Chapters' },
-  { matter: 'back', title: 'Back matter' },
+  { matter: 'front', title: N_('Front matter') },
+  { matter: 'body', title: N_('Chapters') },
+  { matter: 'back', title: N_('Back matter') },
 ];
 
 interface NavigatorProps {
@@ -53,22 +56,22 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
   const rowText = (el: BookElement) => {
     const { primary, secondary } = rowTitles(el);
     // Sections in one edition only say so.
-    const only = el.include === 'ebook' ? 'Ebook only' : el.include === 'print' ? 'Print only' : '';
+    const only = el.include === 'ebook' ? t('Ebook only') : el.include === 'print' ? t('Print only') : '';
     return { primary, secondary: [secondary, only].filter(Boolean).join(' · ') };
   };
   const rowTitles = (el: BookElement) => {
     const label = elementLabel(numbering.get(el.id), theme, book.meta.language);
     const title = el.title.trim();
     if (el.kind === 'chapter' || el.kind === 'part' || el.kind === 'volume') {
-      const kind = el.numbered === false ? `Unnumbered ${KIND_LABEL[el.kind].toLowerCase()}` : KIND_LABEL[el.kind];
-      return { primary: title || label || 'Untitled', secondary: title ? label || kind : kind };
+      const kind = el.numbered === false ? t(UNNUMBERED[el.kind]) : t(KIND_LABEL[el.kind]);
+      return { primary: title || label || t('Untitled'), secondary: title ? label || kind : kind };
     }
-    return { primary: title || KIND_LABEL[el.kind], secondary: title && title !== KIND_LABEL[el.kind] ? KIND_LABEL[el.kind] : '' };
+    return { primary: title || t(KIND_LABEL[el.kind]), secondary: title && title !== KIND_LABEL[el.kind] && title !== t(KIND_LABEL[el.kind]) ? t(KIND_LABEL[el.kind]) : '' };
   };
 
   const remove = (el: BookElement) => {
     const name = rowText(el).primary;
-    if (!window.confirm(`Delete “${name}”? This cannot be undone.`)) return;
+    if (!window.confirm(t('Delete “{name}”? This cannot be undone.', { name }))) return;
     const index = book.elements.findIndex((e) => e.id === el.id);
     flip.capture();
     actions.removeElement(el.id);
@@ -80,12 +83,12 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
   const inVolume = elementsInVolumes(book);
 
   return (
-    <nav ref={nav} className="navigator" aria-label="Book contents">
+    <nav ref={nav} className="navigator" aria-label={t('Book contents')}>
       {pickingVolume && (
         <LibraryPicker
-          title="Add a volume"
-          intro="Copies a book’s chapters into this one as its next volume, with the book’s title and dedication on the volume’s opening page. The copy stays linked, so you can update it if you edit the original."
-          confirmLabel="Add volume"
+          title={t('Add a volume')}
+          intro={t('Copies a book’s chapters into this one as its next volume, with the book’s title and dedication on the volume’s opening page. The copy stays linked, so you can update it if you edit the original.')}
+          confirmLabel={t('Add volume')}
           multiple={false}
           excludeId={book.id}
           onPick={([source]) => {
@@ -100,10 +103,10 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
         return (
           <section key={matter} className="nav-group">
             <header className="nav-group-head" data-flip={`head-${matter}`}>
-              <h2>{title}</h2>
+              <h2>{t(title)}</h2>
               <AddMenu
                 kinds={ADDABLE[matter]}
-                extra={matter === 'body' ? (close) => <button type="button" role="menuitem" onClick={() => { close(); setPickingVolume(true); }}>Book from your library…</button> : undefined}
+                extra={matter === 'body' ? (close) => <button type="button" role="menuitem" onClick={() => { close(); setPickingVolume(true); }}>{t('Book from your library…')}</button> : undefined}
                 onAdd={(kind) => {
                   const afterId = book.elements.find((el) => el.id === selectedId)?.matter === matter ? selectedId! : undefined;
                   flip.capture();
@@ -172,18 +175,18 @@ export function Navigator({ book, actions, selectedId, onSelect }: NavigatorProp
                         {secondary && <span className="nav-secondary">{secondary}</span>}
                       </span>
                     </button>
-                    <DropdownMenu label={`Actions for ${primary}`} className="icon-btn chapter-menu" align="right" button={<Icon name="more" />}>
+                    <DropdownMenu label={t('Actions for {name}', { name: primary })} className="icon-btn chapter-menu" align="right" button={<Icon name="more" />}>
                       {(close) => <>
-                        <button type="button" role="menuitem" disabled={i === 0} onClick={() => { close(); flip.capture(); actions.moveBy(el.id, -1); }}><Icon name="up" />Move up</button>
-                        <button type="button" role="menuitem" disabled={i === items.length - 1} onClick={() => { close(); flip.capture(); actions.moveBy(el.id, 1); }}><Icon name="down" />Move down</button>
+                        <button type="button" role="menuitem" disabled={i === 0} onClick={() => { close(); flip.capture(); actions.moveBy(el.id, -1); }}><Icon name="up" />{t('Move up')}</button>
+                        <button type="button" role="menuitem" disabled={i === items.length - 1} onClick={() => { close(); flip.capture(); actions.moveBy(el.id, 1); }}><Icon name="down" />{t('Move down')}</button>
                         <div className="menu-sep" />
-                        <button type="button" role="menuitem" className="danger" onClick={() => { close(); remove(el); }}><Icon name="trash" />Delete</button>
+                        <button type="button" role="menuitem" className="danger" onClick={() => { close(); remove(el); }}><Icon name="trash" />{t('Delete')}</button>
                       </>}
                     </DropdownMenu>
                   </li>
                 );
               })}
-              {!items.length && <li className="nav-empty">Nothing here yet.</li>}
+              {!items.length && <li className="nav-empty">{t('Nothing here yet.')}</li>}
             </ol>
           </section>
         );
@@ -202,13 +205,13 @@ function numeral(num: { chapter?: number; part?: number } | undefined): string {
 function AddMenu({ kinds, onAdd, extra }: { kinds: ElementKind[]; onAdd: (kind: ElementKind) => void; extra?: (close: () => void) => ReactNode }) {
   if (kinds.length === 1 && !extra) {
     return (
-      <button type="button" className="icon-btn" aria-label={`Add ${KIND_LABEL[kinds[0]]}`} title={`Add ${KIND_LABEL[kinds[0]]}`} onClick={() => onAdd(kinds[0])}>
+      <button type="button" className="icon-btn" aria-label={t('Add {kind}', { kind: t(KIND_LABEL[kinds[0]]) })} title={t('Add {kind}', { kind: t(KIND_LABEL[kinds[0]]) })} onClick={() => onAdd(kinds[0])}>
         <Icon name="plus" size={15} />
       </button>
     );
   }
   return (
-    <DropdownMenu label="Add element" className="icon-btn" align="right" button={<Icon name="plus" size={15} />}>
+    <DropdownMenu label={t('Add element')} className="icon-btn" align="right" button={<Icon name="plus" size={15} />}>
       {(close) => <>
           {kinds.map((kind) => (
             <button
@@ -220,7 +223,7 @@ function AddMenu({ kinds, onAdd, extra }: { kinds: ElementKind[]; onAdd: (kind: 
                 onAdd(kind);
               }}
             >
-              {KIND_LABEL[kind]}
+              {t(KIND_LABEL[kind])}
             </button>
           ))}
           {extra && <><div className="menu-sep" />{extra(close)}</>}

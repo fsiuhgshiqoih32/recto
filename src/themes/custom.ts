@@ -6,6 +6,7 @@ import type { LabelStyle } from '../i18n/labels';
 import type { BookFontId } from './fonts';
 import type { OrnamentId } from './ornaments';
 import type { Theme } from './index';
+import { N_ } from '../i18n/ui';
 
 export interface StyleCustom {
   bodyFont?: BookFontId;
@@ -32,18 +33,18 @@ export const BOOK_FONTS: { id: BookFontId; label: string }[] = [
 ];
 
 export const ORNAMENT_CHOICES: { id: OrnamentId; label: string }[] = [
-  { id: 'diamonds', label: 'Diamonds' },
-  { id: 'rule', label: 'Rule' },
-  { id: 'flourish', label: 'Flourish' },
-  { id: 'squares', label: 'Squares' },
-  { id: 'asterism', label: 'Asterism' },
+  { id: 'diamonds', label: N_('Diamonds') },
+  { id: 'rule', label: N_('Rule') },
+  { id: 'flourish', label: N_('Flourish') },
+  { id: 'squares', label: N_('Squares') },
+  { id: 'asterism', label: N_('Asterism') },
 ];
 
 export const LABEL_CHOICES: { id: LabelStyle; label: string }[] = [
-  { id: 'label-words', label: 'Chapter One' },
-  { id: 'label-number', label: 'Chapter 1' },
+  { id: 'label-words', label: N_('Chapter One') },
+  { id: 'label-number', label: N_('Chapter 1') },
   { id: 'number', label: '1' },
-  { id: 'words', label: 'One' },
+  { id: 'words', label: N_('One') },
 ];
 
 const TITLE_SIZE = { small: 1.35, medium: 1.8, large: 2.5 };

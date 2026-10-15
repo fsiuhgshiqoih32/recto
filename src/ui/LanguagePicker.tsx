@@ -1,7 +1,28 @@
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { LANGUAGES, canonicalCode, isCjk, languageInfo } from '../i18n/languages';
+import { t, uiLanguage } from '../i18n/ui';
 
-const SORTED = [...LANGUAGES].sort((a, b) => a.name.localeCompare(b.name));
+/** Language names in the interface language (Recto's English names in English). */
+function useLanguageNames() {
+  return useMemo(() => {
+    const ui = uiLanguage();
+    let names: Intl.DisplayNames | null = null;
+    try {
+      names = ui === 'en' ? null : new Intl.DisplayNames([ui], { type: 'language' });
+    } catch {
+      // Older engines: the English names.
+    }
+    const nameOf = (code: string, english: string) => {
+      try {
+        return names?.of(code) ?? english;
+      } catch {
+        return english;
+      }
+    };
+    const sorted = LANGUAGES.map((l) => ({ ...l, name: nameOf(l.code, l.name) })).sort((a, b) => a.name.localeCompare(b.name, ui));
+    return { sorted, nameOf };
+  }, []);
+}
 
 /**
  * Picks a book language: the languages Recto has translations for, or any
@@ -23,6 +44,7 @@ export function LanguagePicker({
   hint?: string;
 }) {
   const id = useId();
+  const { sorted: SORTED, nameOf } = useLanguageNames();
   const listed = value === 'auto' || SORTED.some((l) => l.code.toLowerCase() === value.toLowerCase());
   const [other, setOther] = useState(!listed);
   const [draft, setDraft] = useState(listed ? '' : value);
@@ -53,13 +75,13 @@ export function LanguagePicker({
             {l.name === l.native ? l.name : `${l.name} · ${l.native}`}
           </option>
         ))}
-        <option value="other">Other language…</option>
+        <option value="other">{t('Other language…')}</option>
       </select>
       {other && (
         <input
-          aria-label="Language code"
+          aria-label={t('Language code')}
           value={draft}
-          placeholder="Language code, e.g. sw, ta, ur, ga"
+          placeholder={t('Language code, e.g. sw, ta, ur, ga')}
           onChange={(e) => {
             setDraft(e.target.value);
             const code = canonicalCode(e.target.value);
@@ -67,14 +89,13 @@ export function LanguagePicker({
           }}
         />
       )}
-      {other && draft && !parsed && <span className="field-hint field-error">Not a valid language code.</span>}
+      {other && draft && !parsed && <span className="field-hint field-error">{t('Not a valid language code.')}</span>}
       {info && (other ? !!parsed : true) && (
         <span className="field-hint">
-          {other && `${info.name} (${info.native}) · `}
-          {info.dir === 'rtl' ? 'Right-to-left' : 'Left-to-right'}
-          {!info.strings && ' · Recto has no translations for this language, so rename default headings like “Contents” yourself'}
-          {isCjk(info.script) &&
-            ' · Set in your computer’s serif (Mincho/Song) font; install Noto Serif CJK for the best print results'}
+          {other && `${nameOf(info.code, info.name)} (${info.native}) · `}
+          {info.dir === 'rtl' ? t('Right-to-left') : t('Left-to-right')}
+          {!info.strings && ` · ${t('Recto has no translations for this language, so rename default headings like “Contents” yourself')}`}
+          {isCjk(info.script) && ` · ${t('Set in your computer’s serif (Mincho/Song) font; install Noto Serif CJK for the best print results')}`}
           {hint && ` · ${hint}`}
         </span>
       )}

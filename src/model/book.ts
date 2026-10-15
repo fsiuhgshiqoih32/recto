@@ -3,6 +3,7 @@
 
 import type { Binding, TrimId } from '../export/print/trims';
 import type { StyleCustom } from '../themes/custom';
+import { N_ } from '../i18n/ui';
 
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 
@@ -179,19 +180,20 @@ export const MATTER_OF: Record<ElementKind, Matter> = {
   other: 'back',
 };
 
+/** Element kinds by name, in English (the interface shows them through t()). */
 export const KIND_LABEL: Record<ElementKind, string> = {
-  'title-page': 'Title Page',
-  copyright: 'Copyright',
-  dedication: 'Dedication',
-  epigraph: 'Epigraph',
-  toc: 'Contents',
-  volume: 'Volume',
-  part: 'Part',
-  chapter: 'Chapter',
-  acknowledgments: 'Acknowledgments',
-  'about-author': 'About the Author',
-  'also-by': 'Also By',
-  other: 'Other',
+  'title-page': N_('Title Page'),
+  copyright: N_('Copyright'),
+  dedication: N_('Dedication'),
+  epigraph: N_('Epigraph'),
+  toc: N_('Contents'),
+  volume: N_('Volume'),
+  part: N_('Part'),
+  chapter: N_('Chapter'),
+  acknowledgments: N_('Acknowledgments'),
+  'about-author': N_('About the Author'),
+  'also-by': N_('Also By'),
+  other: N_('Other'),
 };
 
 /** Elements whose page is generated from book metadata rather than edited. */

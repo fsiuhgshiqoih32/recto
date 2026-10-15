@@ -4,6 +4,7 @@ import { sampleBook } from './model/sample';
 import { installAppFonts } from './preview/assets';
 import { loadStartupBook } from './store/db';
 import { App } from './ui/App';
+import { loadUiLanguage } from './i18n/ui';
 // The app's own typefaces (OFL), bundled so the desktop app works offline.
 import '@fontsource-variable/instrument-sans/wght.css';
 import '@fontsource-variable/newsreader/opsz.css';
@@ -11,6 +12,9 @@ import '@fontsource-variable/newsreader/opsz-italic.css';
 import './ui/app.css';
 
 installAppFonts();
+
+// The interface language loads first: the app renders its text once, in that language.
+await loadUiLanguage();
 
 const book = await loadStartupBook().catch(() => undefined);
 

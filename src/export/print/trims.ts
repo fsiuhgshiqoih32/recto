@@ -1,3 +1,4 @@
+import { N_ } from '../../i18n/ui';
 // Trim sizes: KDP's full paperback and hardcover range plus the common
 // IngramSpark-only sizes, each with type sized for its page. Sources: KDP help
 // topic GVBQ3CMEQW3W2VL6 (trim, bleed and margins) and IngramSpark's size list.
@@ -77,7 +78,7 @@ export interface PageRange {
 
 /** The page counts a printer accepts for a binding (KDP, black ink). */
 export function pageRange(binding: Binding): PageRange {
-  return binding === 'hardcover' ? { printer: 'KDP hardcover', min: 75, max: 550 } : { printer: 'KDP paperback', min: 24, max: 828 };
+  return binding === 'hardcover' ? { printer: N_('KDP hardcover'), min: 75, max: 550 } : { printer: N_('KDP paperback'), min: 24, max: 828 };
 }
 
 /** Who prints a trim in a binding, for the trim picker's notes and preflight. */
@@ -89,9 +90,9 @@ export function printersFor(trim: Trim, binding: Binding): string[] {
 }
 
 export const TRIM_GROUPS: { label: string; ids: TrimId[] }[] = [
-  { label: 'Fiction and memoir', ids: ['5x8', '5.06x7.81', '5.25x8', '5.5x8.5', '6x9', '6.14x9.21'] },
-  { label: 'Nonfiction and large print', ids: ['6.69x9.61', '7x10', '7.44x9.69', '7.5x9.25', '8x10', '8.5x11', 'a4'] },
-  { label: 'Square, landscape and picture books', ids: ['8.25x6', '8.25x8.25', '8.5x8.5'] },
-  { label: 'Hardcover only', ids: ['8.25x11'] },
-  { label: 'IngramSpark sizes', ids: ['a5', 'demy', '4.25x7'] },
+  { label: N_('Fiction and memoir'), ids: ['5x8', '5.06x7.81', '5.25x8', '5.5x8.5', '6x9', '6.14x9.21'] },
+  { label: N_('Nonfiction and large print'), ids: ['6.69x9.61', '7x10', '7.44x9.69', '7.5x9.25', '8x10', '8.5x11', 'a4'] },
+  { label: N_('Square, landscape and picture books'), ids: ['8.25x6', '8.25x8.25', '8.5x8.5'] },
+  { label: N_('Hardcover only'), ids: ['8.25x11'] },
+  { label: N_('IngramSpark sizes'), ids: ['a5', 'demy', '4.25x7'] },
 ];

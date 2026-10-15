@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useRef } from 'react';
+import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
 /** Manual activation keeps arrow navigation from triggering expensive print layouts. */
 export function TabBar<T extends string>({ id, label, options, value, onChange, className = 'tabs' }: {
@@ -11,8 +11,29 @@ export function TabBar<T extends string>({ id, label, options, value, onChange, 
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const selected = Math.max(0, options.findIndex((option) => option.id === value));
-  // The indicator slides under the selected tab; every tab is the same width.
-  const style = { '--tab-count': options.length, '--tab-index': selected } as CSSProperties;
+  // The indicator slides under the selected tab. Tabs are as wide as their labels
+  // (translations vary in length), so it is placed from the tab's measured box.
+  const [box, setBox] = useState<{ x: number; width: number } | null>(null);
+  const labels = options.map((option) => option.label).join('\n');
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const measure = () => {
+      const tab = root.querySelectorAll<HTMLElement>('[role="tab"]')[selected];
+      if (!tab) return;
+      const next = { x: tab.offsetLeft, width: tab.offsetWidth };
+      setBox((prev) => (prev && prev.x === next.x && prev.width === next.width ? prev : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [selected, labels]);
+  const style = {
+    '--tab-count': options.length,
+    '--tab-index': selected,
+    ...(box ? { '--indicator-x': `${box.x}px`, '--indicator-w': `${box.width}px` } : {}),
+  } as CSSProperties;
   return (
     <div ref={ref} className={className} role="tablist" aria-label={label} style={style}>
       <span className="tab-indicator" aria-hidden="true" />

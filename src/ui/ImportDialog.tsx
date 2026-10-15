@@ -4,6 +4,7 @@ import { languageInfo } from '../i18n/languages';
 import type { Book } from '../model/book';
 import { Icon } from './icons';
 import { LanguagePicker } from './LanguagePicker';
+import { t } from '../i18n/ui';
 
 // The importers (mammoth, markdown-it) are large, so they load on first use.
 const loadImporters = () => import('../import');
@@ -43,8 +44,8 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
     const detected = language === 'auto';
     const lang = detected ? detectManuscriptLanguage(html) : language;
     const book = bookFromManuscript(html, title, author.trim(), lang);
-    const parts = [`${detected ? 'detected ' : ''}${languageInfo(lang).name}`];
-    if (usedEncoding && usedEncoding !== 'utf-8') parts.push(`read as ${usedEncoding}`);
+    const parts = [detected ? t('detected {language}', { language: languageInfo(lang).name }) : languageInfo(lang).name];
+    if (usedEncoding && usedEncoding !== 'utf-8') parts.push(t('read as {encoding}', { encoding: usedEncoding }));
     onImport({ book, summary: parts.join(', ') });
   };
 
@@ -66,49 +67,47 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
     run(async () => {
       const { formatOf, manuscriptToHtml, titleFromFileName } = await loadImporters();
       const format = formatOf(file.name);
-      if (!format) throw new Error('Recto can import .docx, .md, .txt and .html manuscripts.');
+      if (!format) throw new Error(t('Recto can import .docx, .md, .txt and .html manuscripts.'));
       const { html, encoding: used } = await manuscriptToHtml(format, await file.arrayBuffer(), encoding);
       await finish(html, titleFromFileName(file.name), used);
-    }, 'That file could not be read.');
+    }, t('That file could not be read.'));
 
   const importPasted = () =>
     run(async () => {
       const { manuscriptToHtml } = await loadImporters();
-      await finish((await manuscriptToHtml('text', pasted)).html, 'Untitled');
-    }, 'That text could not be imported.');
+      await finish((await manuscriptToHtml('text', pasted)).html, t('Untitled'));
+    }, t('That text could not be imported.'));
 
   return (
     <dialog ref={dialog} className="dialog" onClose={onClose} aria-labelledby="import-title">
       <header className="dialog-head">
-        <h2 id="import-title">Import a manuscript</h2>
-        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+        <h2 id="import-title">{t('Import a manuscript')}</h2>
+        <button type="button" className="icon-btn" aria-label={t('Close')} onClick={onClose}>
           <Icon name="close" />
         </button>
       </header>
       <p className="dialog-intro">
-        Recto starts a new book from your manuscript, in any language. It splits chapters at <b>Heading 1</b> or chapter lines
-        (“Chapter 7”, “Capítulo 7”, “第七章”…), finds parts, prologues and back matter, and turns <code>* * *</code> or{' '}
-        <code>#</code> lines into scene breaks.
+        {t('Recto starts a new book from your manuscript, in any language. It splits chapters at Heading 1 or chapter lines (“Chapter 7”, “Capítulo 7”, “第七章”…), finds parts, prologues and back matter, and turns “* * *” or “#” lines into scene breaks.')}
       </p>
       <label className="field">
-        <span className="field-label">Author</span>
-        <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Optional; you can add it later" />
+        <span className="field-label">{t('Author')}</span>
+        <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder={t('Optional; you can add it later')} />
       </label>
       <div className="field-row">
-        <LanguagePicker label="Language" value={language} onChange={setLanguage} autoLabel="Detect automatically" />
+        <LanguagePicker label={t('Language')} value={language} onChange={setLanguage} autoLabel="Detect automatically" />
         <div className="field">
           <label className="field-label" htmlFor={encodingId}>
-            Text encoding
+            {t('Text encoding')}
           </label>
           <select id={encodingId} value={encoding} onChange={(e) => setEncoding(e.target.value)}>
-            <option value="auto">Detect automatically</option>
+            <option value="auto">{t('Detect automatically')}</option>
             {ENCODING_CHOICES.map((enc) => (
               <option key={enc} value={enc}>
                 {enc}
               </option>
             ))}
           </select>
-          <span className="field-hint">For .txt, .md and .html files. Word files are always read correctly.</span>
+          <span className="field-hint">{t('For .txt, .md and .html files. Word files are always read correctly.')}</span>
         </div>
       </div>
       <label
@@ -127,9 +126,9 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
       >
         <Icon name="upload" size={22} />
         <span>
-          <b>Choose a file</b> or drop it here
+          <b>{t('Choose a file')}</b> {t('or drop it here')}
         </span>
-        <span className="field-hint">Word (.docx), Markdown (.md), plain text (.txt) or HTML</span>
+        <span className="field-hint">{t('Word (.docx), Markdown (.md), plain text (.txt) or HTML')}</span>
         <input
           type="file"
           accept=".docx,.md,.markdown,.txt,.html,.htm"
@@ -142,18 +141,18 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
         />
       </label>
       <details className="paste">
-        <summary>Or paste text</summary>
-        <textarea rows={8} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'Chapter 1\n\nIt was a dark and stormy night…'} />
+        <summary>{t('Or paste text')}</summary>
+        <textarea rows={8} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={t('Chapter 1\n\nIt was a dark and stormy night…')} />
         <button
           type="button"
           className="btn"
           disabled={!pasted.trim() || busy}
           onClick={() => void importPasted()}
         >
-          Import pasted text
+          {t('Import pasted text')}
         </button>
       </details>
-      {busy && <p className="dialog-status">Reading manuscript…</p>}
+      {busy && <p className="dialog-status">{t('Reading manuscript…')}</p>}
       {error && (
         <p className="dialog-error" role="alert">
           {error}

@@ -4,6 +4,7 @@ import { computeNumbering, elementLabel, themeOf } from '../render/html';
 import { Editor } from '../editor/Editor';
 import { fontStack } from '../themes/fonts';
 import type { BookActions } from './useBook';
+import { t } from '../i18n/ui';
 
 interface ElementPaneProps {
   book: Book;
@@ -25,8 +26,8 @@ export function ElementPane({ book, element, actions, onShowBookDetails, active 
     <div className="element-pane">
       <div className="element-head">
         <div className="element-kind">
-          {label || KIND_LABEL[element.kind]}
-          {isChapterLike && element.numbered === false && <span> · unnumbered</span>}
+          {label || t(KIND_LABEL[element.kind])}
+          {isChapterLike && element.numbered === false && <span> {t('· unnumbered')}</span>}
         </div>
         <input
           className="title-input"
@@ -34,8 +35,8 @@ export function ElementPane({ book, element, actions, onShowBookDetails, active 
           lang={book.meta.language}
           dir="auto"
           value={element.title}
-          placeholder={isChapterLike ? 'Untitled (number only)' : KIND_LABEL[element.kind]}
-          aria-label={HEADLESS.has(element.kind) ? 'Name in the navigator' : 'Title'}
+          placeholder={isChapterLike ? t('Untitled (number only)') : t(KIND_LABEL[element.kind])}
+          aria-label={HEADLESS.has(element.kind) ? t('Name in the navigator') : t('Title')}
           onChange={(e) => update({ title: e.target.value })}
         />
         {element.kind === 'chapter' && (
@@ -44,8 +45,8 @@ export function ElementPane({ book, element, actions, onShowBookDetails, active 
             lang={book.meta.language}
             dir="auto"
             value={element.subtitle ?? ''}
-            placeholder="Subtitle (optional)"
-            aria-label="Subtitle"
+            placeholder={t('Subtitle (optional)')}
+            aria-label={t('Subtitle')}
             onChange={(e) => update({ subtitle: e.target.value })}
           />
         )}
@@ -53,28 +54,28 @@ export function ElementPane({ book, element, actions, onShowBookDetails, active 
           {isChapterLike && (
             <label className="check">
               <input type="checkbox" checked={element.numbered !== false} onChange={(e) => update({ numbered: e.target.checked })} />
-              Numbered
+              {t('Numbered')}
             </label>
           )}
           {element.kind !== 'title-page' && (
             <label className="check">
               <input type="checkbox" checked={element.includeInToc} onChange={(e) => update({ includeInToc: e.target.checked })} />
-              Listed in contents
+              {t('Listed in contents')}
             </label>
           )}
-          {HEADLESS.has(element.kind) && <span className="hint">This page prints without a heading.</span>}
+          {HEADLESS.has(element.kind) && <span className="hint">{t('This page prints without a heading.')}</span>}
         </div>
       </div>
       {GENERATED_KINDS.has(element.kind) ? (
         <div className="generated-note">
           <p>
             {element.kind === 'toc'
-              ? 'The contents page is generated from the elements marked “Listed in contents”. In print it shows page numbers; in ebooks the entries are links.'
-              : 'The title page is generated from the book’s title, subtitle, author and publisher.'}
+              ? t('The contents page is generated from the elements marked “Listed in contents”. In print it shows page numbers; in ebooks the entries are links.')
+              : t('The title page is generated from the book’s title, subtitle, author and publisher.')}
           </p>
           {element.kind === 'title-page' && (
             <button type="button" className="btn" onClick={onShowBookDetails}>
-              Edit book details
+              {t('Edit book details')}
             </button>
           )}
         </div>
@@ -85,7 +86,7 @@ export function ElementPane({ book, element, actions, onShowBookDetails, active 
           content={element.content}
           theme={theme}
           lang={book.meta.language}
-          placeholder={element.kind === 'chapter' ? 'Start writing your chapter…' : 'Write here…'}
+          placeholder={element.kind === 'chapter' ? t('Start writing your chapter…') : t('Write here…')}
           onChange={(content) => update({ content })}
           active={active}
           bleed={!!book.style.bleed}

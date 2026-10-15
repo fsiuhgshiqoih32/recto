@@ -333,7 +333,7 @@ b, strong { font-weight: 600; }
 .save-dot.saved { background: var(--success); }
 .save-dot.unavailable { background: var(--danger); }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
-.view-switch { width: 168px; }
+.view-switch { min-width: 168px; }
 .export-button { padding: 0 12px 0 13px; }
 
 /* ---------- Buttons ---------- */
@@ -422,14 +422,14 @@ select {
    TabBar sets --tab-count and --tab-index; the indicator slides between equal-width tabs. */
 .segmented {
   position: relative; isolation: isolate; flex: none;
-  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr);
   padding: 3px; border-radius: var(--radius-md); background: var(--well);
 }
 .segmented .tab-indicator {
-  position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px;
-  width: calc((100% - 6px) / var(--tab-count)); border-radius: calc(var(--radius-md) - 3px);
+  position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 0;
+  width: var(--indicator-w, calc((100% - 6px) / var(--tab-count))); border-radius: calc(var(--radius-md) - 3px);
   background: var(--seg-thumb); box-shadow: var(--shadow-sm);
-  transform: translateX(calc(var(--tab-index) * 100%));
+  transform: translateX(var(--indicator-x, calc(3px + var(--tab-index) * 100%)));
   transition: transform var(--t-base) var(--ease-out);
 }
 .segmented button {
@@ -446,13 +446,13 @@ select {
 .segmented-small button { height: 26px; font-size: 12.5px; padding: 0 12px; }
 
 .tabs {
-  position: relative; flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  position: relative; flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr);
   margin: 0 20px; border-bottom: 1px solid var(--line);
 }
 .tabs .tab-indicator {
-  position: absolute; left: 0; bottom: -1px; height: 2px; width: calc(100% / var(--tab-count));
+  position: absolute; left: 0; bottom: -1px; height: 2px; width: var(--indicator-w, calc(100% / var(--tab-count)));
   border-radius: 2px 2px 0 0; background: var(--accent);
-  transform: translateX(calc(var(--tab-index) * 100%));
+  transform: translateX(var(--indicator-x, calc(var(--tab-index) * 100%)));
   transition: transform var(--t-base) var(--ease-out);
 }
 .tabs button {
@@ -514,6 +514,7 @@ select {
 .swatch-system > span:nth-child(1) { background: #faf8f4; }
 .swatch-system > span:nth-child(2) { background: #1b1a18; }
 .swatch-system > span:nth-child(3) { background: linear-gradient(90deg, #b0361f 50%, #f08a6e 50%); }
+.swatch-language { display: grid; place-items: center; background: var(--well); color: var(--ink-2); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
 
 /* ---------- Workspace ---------- */
 .workspace-toolbar {
@@ -903,7 +904,7 @@ html[data-vt='theme']::view-transition-new(root) { animation: vt-reveal 520ms va
   .brand { grid-area: brand; padding: 0; }
   .file-actions { grid-area: files; }
   .book-title { grid-area: title; margin: 0; padding: 0; border: 0; }
-  .view-switch { grid-area: views; justify-self: end; width: 150px; }
+  .view-switch { grid-area: views; justify-self: end; min-width: 150px; }
   .topbar-actions { grid-area: actions; gap: 6px; }
   .workspace, .app[data-view='edit'][data-preview='false'] .workspace { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'canvas'; }
   .workspace-toolbar { gap: 6px; padding: 4px 10px; }

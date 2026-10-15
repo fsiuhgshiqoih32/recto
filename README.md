@@ -90,6 +90,7 @@ Self-publishing authors usually format books with a dedicated app. The best-know
 - **Your files stay yours.**
   - Autosaves to your browser's (or the desktop app's) storage.
   - `.recto` files are plain JSON.
+- **Interface in English, German, Spanish and French.** Choose under **Appearance → Interface language**; it follows your system language at first. [docs/translating.md](docs/translating.md) explains how to add another.
 - **Dark mode and app themes.** The interface is styled like a typesetter's desk: warm paper, ink-black type, and a single accent color per theme.
   - Three light themes: Paper (rubric red), Sepia (bookcloth green), Slate (blue-black).
   - Three dark themes: Ink (vermilion), Midnight (pale blue), Evergreen (brass).
@@ -207,7 +208,7 @@ The key design decision is a single renderer. The ebook, the print PDF and every
 | `src/export/print/` | Trim sizes, KDP gutter table, `@page` rules, the paged.js document, widow handling, PDF finishing, PDF/X |
 | `src/export/cover/`, `src/export/docx/` | Paperback wrap covers; Word export |
 | `src/preflight/` | The checks stores and printers apply on upload |
-| `src/i18n/` | Language table and book words in 30 languages, chapter labels, language and encoding detection, hyphenation |
+| `src/i18n/`, `locales/` | Language table and book words in 30 languages, chapter labels, language and encoding detection, hyphenation; the interface translations |
 | `electron/` | The desktop shell: app:// origin, PDF export, save in place, updates, Kindle Previewer, spellcheck, file associations |
 | `src/ui/`, `src/editor/`, `src/preview/` | The React app. App themes are token blocks at the top of `src/ui/app.css`, listed in `src/ui/appearance.ts` |
 | `cli/` | Headless PDF and EPUB export (Playwright) |
@@ -223,6 +224,7 @@ The key design decision is a single renderer. The ebook, the print PDF and every
 | `npm run test:e2e` | Browser tests (Playwright) against the production build |
 | `npm run test:pdf` | Renders sample books to PDF and checks them (see below) |
 | `npm run test:epub` | Builds sample EPUBs and validates them with epubcheck-ts |
+| `npm run i18n` | Refreshes `locales/en.json` from the interface text in the code |
 | `npm run pdf -- <file.recto>` | Command-line PDF export |
 | `npm run epub -- <file.recto>` | Command-line EPUB export |
 | `npm run sample:docx` | Regenerates `samples/` from the sample novella |
@@ -264,7 +266,6 @@ Recto sends nothing anywhere. There is no account, no telemetry and no server. B
 
 Not yet supported:
 
-- translating the app's own interface (it's in English; the books it makes can be in any language)
 - fixed-layout EPUBs for picture books. Fixed layout can't meet the European Accessibility Act's text-adjustment requirements, and full-colour picture books need CMYK printing, below.
 - vertical text in print. The ebook can be vertical; paged.js lays print pages out horizontally only.
 - CMYK colour for colour interiors without Ghostscript. Chromium writes every colour as RGB, so PDF/X depends on a Ghostscript you install yourself (it's AGPL, so Recto doesn't bundle it).

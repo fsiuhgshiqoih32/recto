@@ -9,6 +9,7 @@ import { fontUrl, loadFont, pagedUrl } from '../preview/assets';
 import { loadHyphenator } from '../i18n/hyphenate';
 import { fileNameFor, serializeBook } from '../store/file';
 import { type PageStart, readPageStarts } from '../export/print/pageMap';
+import { t } from '../i18n/ui';
 
 export function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -103,7 +104,7 @@ function layoutInFrame(frame: HTMLIFrameElement, html: (renderId: string) => str
     };
     const timeout = setTimeout(() => {
       cleanup();
-      reject(new Error('The print layout took too long.'));
+      reject(new Error(t('The print layout took too long.')));
     }, 180_000);
     window.addEventListener('message', onMessage);
     frame.srcdoc = html(renderId);

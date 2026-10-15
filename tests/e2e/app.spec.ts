@@ -258,3 +258,16 @@ test('gathers books into a box set and adds another volume', async ({ page }) =>
   await expect(page.getByText(/Copied from “The Lamp at Harrow Point”/)).toBeVisible();
   await expect(page.getByLabel('Volume author')).toHaveValue('Mara Quill');
 });
+
+test('shows the interface in the chosen language', async ({ page }) => {
+  await page.getByRole('button', { name: /^Appearance/ }).click();
+  await page.getByRole('menuitemradio', { name: 'Deutsch' }).click();
+  await expect(page.getByRole('button', { name: 'Exportieren' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Veröffentlichen' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+  // Book words stay in the book's language.
+  await expect(page.locator('.nav-primary', { hasText: 'The Inventory' })).toBeVisible();
+  await page.getByRole('button', { name: /^Erscheinungsbild/ }).click();
+  await page.getByRole('menuitemradio', { name: 'English' }).click();
+  await expect(page.getByRole('button', { name: 'Export', exact: true })).toBeVisible();
+});

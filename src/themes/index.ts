@@ -3,6 +3,7 @@ import { isBicameral, isCjk, languageInfo } from '../i18n/languages';
 import type { LabelStyle } from '../i18n/labels';
 import { type BookFontId, fontStack } from './fonts';
 import type { OrnamentId } from './ornaments';
+import { N_ } from '../i18n/ui';
 
 export interface Theme {
   id: ThemeId;
@@ -27,7 +28,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   octavo: {
     id: 'octavo',
     name: 'Octavo',
-    blurb: 'Classic literary. Garamond, letterspaced chapter labels, italic titles, drop caps.',
+    blurb: N_('Classic literary. Garamond, letterspaced chapter labels, italic titles, drop caps.'),
     fonts: { body: 'eb-garamond', heading: 'eb-garamond' },
     chapterLabel: 'label-words',
     partLabel: 'label-words',
@@ -52,7 +53,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   ledger: {
     id: 'ledger',
     name: 'Ledger',
-    blurb: 'Modern and plain. Big numerals, a hairline rule, no drop caps.',
+    blurb: N_('Modern and plain. Big numerals, a hairline rule, no drop caps.'),
     fonts: { body: 'source-serif-4', heading: 'source-serif-4' },
     chapterLabel: 'number',
     partLabel: 'label-number',
@@ -76,7 +77,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   marginalia: {
     id: 'marginalia',
     name: 'Marginalia',
-    blurb: 'Romantic and airy. Cormorant headings, a calligraphic flourish, tall drop caps.',
+    blurb: N_('Romantic and airy. Cormorant headings, a calligraphic flourish, tall drop caps.'),
     fonts: { body: 'crimson-pro', heading: 'cormorant-garamond' },
     chapterLabel: 'label-words',
     partLabel: 'label-words',
@@ -103,7 +104,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   broadsheet: {
     id: 'broadsheet',
     name: 'Broadsheet',
-    blurb: 'Bold and urgent, for thrillers. Heavy uppercase titles, square scene breaks.',
+    blurb: N_('Bold and urgent, for thrillers. Heavy uppercase titles, square scene breaks.'),
     fonts: { body: 'libre-baskerville', heading: 'libre-baskerville' },
     chapterLabel: 'label-number',
     partLabel: 'label-number',
@@ -129,7 +130,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   almanac: {
     id: 'almanac',
     name: 'Almanac',
-    blurb: 'Warm and storybook-like, for fantasy and cozy reads. Asterisms, italic titles.',
+    blurb: N_('Warm and storybook-like, for fantasy and cozy reads. Asterisms, italic titles.'),
     fonts: { body: 'lora', heading: 'lora' },
     chapterLabel: 'words',
     partLabel: 'label-words',

@@ -12,14 +12,15 @@ import { fontUrl, pagedUrl } from './assets';
 import { TabBar } from '../ui/TabBar';
 import { Icon } from '../ui/icons';
 import { isVertical, tateChuYoko } from '../export/epub/vertical';
+import { N_, t } from '../i18n/ui';
 
 export type Device = 'ereader' | 'phone' | 'tablet' | 'print';
 
 const DEVICES = [
-  { id: 'ereader', label: 'E-reader', icon: <Icon name="ereader" size={15} /> },
-  { id: 'phone', label: 'Phone', icon: <Icon name="phone" size={15} /> },
-  { id: 'tablet', label: 'Tablet', icon: <Icon name="tablet" size={15} /> },
-  { id: 'print', label: 'Print', icon: <Icon name="spread" size={15} /> },
+  { id: 'ereader', label: N_('E-reader'), icon: <Icon name="ereader" size={15} /> },
+  { id: 'phone', label: N_('Phone'), icon: <Icon name="phone" size={15} /> },
+  { id: 'tablet', label: N_('Tablet'), icon: <Icon name="tablet" size={15} /> },
+  { id: 'print', label: N_('Print'), icon: <Icon name="spread" size={15} /> },
 ] as const;
 
 // Register during parsing: waiting for iframe load leaves a keyboard gap while
@@ -58,8 +59,8 @@ function useDebounced<T>(value: T, ms: number, active = true): T {
 export function PreviewPanel({ book, element, device, onDevice, active = true }: { book: Book; element: BookElement | undefined; device: Device; onDevice: (d: Device) => void; active?: boolean }) {
   return (
     <div className="preview-panel">
-      <div className="preview-heading"><span className="preview-caption">Live preview</span><span className="preview-hint">{device === 'print' ? 'Print edition' : 'Ebook edition'}</span></div>
-      <TabBar id="device" label="Preview device" options={DEVICES} value={device} onChange={onDevice} className="segmented device-switch" />
+      <div className="preview-heading"><span className="preview-caption">{t('Live preview')}</span><span className="preview-hint">{device === 'print' ? t('Print edition') : t('Ebook edition')}</span></div>
+      <TabBar id="device" label={t('Preview device')} options={DEVICES.map((d) => ({ ...d, label: t(d.label) }))} value={device} onChange={onDevice} className="segmented device-switch" />
       <div className="preview-content" id={`device-panel-${device}`} role="tabpanel" aria-labelledby={`device-tab-${device}`}>
         {device === 'print' ? <PrintPreview book={book} element={element} active={active} /> : <EbookPreview book={book} element={element} device={device} active={active} />}
       </div>
@@ -97,9 +98,9 @@ a { color: inherit; }
   return (
     <div className={`device device-${device}`}>
       <div className="device-screen">
-        {!element ? <p className="empty-note">Select an element to preview it.</p>
-          : element.include === 'print' ? <p className="empty-note">Print only: this section isn’t in the ebook.</p>
-          : <iframe title="Ebook preview" srcDoc={html} />}
+        {!element ? <p className="empty-note">{t('Select an element to preview it.')}</p>
+          : element.include === 'print' ? <p className="empty-note">{t('Print only: this section isn’t in the ebook.')}</p>
+          : <iframe title={t('Ebook preview')} srcDoc={html} />}
       </div>
     </div>
   );
@@ -162,7 +163,7 @@ function PrintPreview({ book, element, active }: { book: Book; element: BookElem
   return (
     <div className="print-preview">
       <div className="print-bar">
-        <TabBar id="print-scope" label="Print preview scope" options={[{ id: 'element', label: 'This element' }, { id: 'book', label: 'Whole book' }]} value={scope} onChange={setScope} className="segmented segmented-small" />
+        <TabBar id="print-scope" label={t('Print preview scope')} options={[{ id: 'element', label: t('This element') }, { id: 'book', label: t('Whole book') }]} value={scope} onChange={setScope} className="segmented segmented-small" />
         <span className="print-info" aria-live="polite">
           {trimLabel(trim)}
           {pages !== null && !busy && ` · ${pages} ${pages === 1 ? 'page' : 'pages'}`}
@@ -170,8 +171,8 @@ function PrintPreview({ book, element, active }: { book: Book; element: BookElem
         </span>
       </div>
       <div className={`print-stage${busy ? ' is-busy' : ''}`} id={`print-scope-panel-${scope}`} role="tabpanel" aria-labelledby={`print-scope-tab-${scope}`}>
-        {scope === 'element' && element?.include === 'ebook' && <p className="empty-note">Ebook only: this section isn’t in the print edition.</p>}
-        <iframe title="Print preview" srcDoc={doc.html} hidden={scope === 'element' && element?.include === 'ebook'} />
+        {scope === 'element' && element?.include === 'ebook' && <p className="empty-note">{t('Ebook only: this section isn’t in the print edition.')}</p>}
+        <iframe title={t('Print preview')} srcDoc={doc.html} hidden={scope === 'element' && element?.include === 'ebook'} />
       </div>
     </div>
   );

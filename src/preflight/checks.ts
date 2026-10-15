@@ -9,6 +9,7 @@ import { pageRange, printersFor } from '../export/print/trims';
 import { imageInfo } from './images';
 import { isbn13, isbnProblem } from './isbn';
 import { nameVariants } from './names';
+import { N_, t } from '../i18n/ui';
 
 export type Severity = 'error' | 'warning' | 'info' | 'ok';
 export type Area = 'details' | 'text' | 'print' | 'ebook' | 'accessibility';
@@ -23,11 +24,11 @@ export interface Finding {
 }
 
 export const AREA_LABEL: Record<Area, string> = {
-  details: 'Book details',
-  text: 'Text',
-  print: 'Print edition',
-  ebook: 'Ebook',
-  accessibility: 'Image descriptions',
+  details: N_('Book details'),
+  text: N_('Text'),
+  print: N_('Print edition'),
+  ebook: N_('Ebook'),
+  accessibility: N_('Image descriptions'),
 };
 
 /** KDP's recommended image resolution, and the point below which prints look soft. */
@@ -46,7 +47,7 @@ const PLACEHOLDERS: [RegExp, string][] = [
 ];
 
 export function elementName(el: BookElement): string {
-  return el.title.trim() || KIND_LABEL[el.kind];
+  return el.title.trim() || t(KIND_LABEL[el.kind]);
 }
 
 function images(blocks: BlockNode[] | undefined, out: Extract<BlockNode, { type: 'image' }>[] = []) {
@@ -77,8 +78,8 @@ export function checkBook(book: Book): Finding[] {
   const findings: Finding[] = [];
   const { meta } = book;
 
-  if (!meta.title.trim() || meta.title.trim() === 'Untitled') findings.push({ area: 'details', severity: 'warning', title: 'The book has no title yet', detail: 'Stores show it, and it runs across the top of right-hand pages.' });
-  if (!meta.author.trim()) findings.push({ area: 'details', severity: 'warning', title: 'No author name', detail: 'Running heads, the title page and the ebook metadata use it.' });
+  if (!meta.title.trim() || meta.title.trim() === 'Untitled') findings.push({ area: 'details', severity: 'warning', title: t('The book has no title yet'), detail: t('Stores show it, and it runs across the top of right-hand pages.') });
+  if (!meta.author.trim()) findings.push({ area: 'details', severity: 'warning', title: t('No author name'), detail: t('Running heads, the title page and the ebook metadata use it.') });
   const isbnCheck = (value: string, edition: string) => {
     if (!value.trim()) return;
     const problem = isbnProblem(value);
@@ -86,8 +87,8 @@ export function checkBook(book: Book): Finding[] {
       findings.push({
         area: 'details',
         severity: 'error',
-        title: `The ${edition} ISBN isn't valid`,
-        detail: problem === 'length' ? `“${value}” should have 10 or 13 digits.` : `“${value}” has the wrong check digit, so a digit is probably mistyped.`,
+        title: edition === 'ebook' ? t('The ebook ISBN isn\'t valid') : t('The paperback ISBN isn\'t valid'),
+        detail: problem === 'length' ? t('“{isbn}” should have 10 or 13 digits.', { isbn: value }) : t('“{isbn}” has the wrong check digit, so a digit is probably mistyped.', { isbn: value }),
       });
     }
   };
@@ -95,7 +96,7 @@ export function checkBook(book: Book): Finding[] {
   isbnCheck(meta.isbnPrint, 'paperback');
   const ebookIsbn = isbn13(meta.isbnEbook);
   if (ebookIsbn && ebookIsbn === isbn13(meta.isbnPrint)) {
-    findings.push({ area: 'details', severity: 'error', title: 'The ebook and paperback share an ISBN', detail: 'Each edition needs its own ISBN.' });
+    findings.push({ area: 'details', severity: 'error', title: t('The ebook and paperback share an ISBN'), detail: t('Each edition needs its own ISBN.') });
   }
 
   const binding = book.style.binding ?? 'paperback';
@@ -105,18 +106,18 @@ export function checkBook(book: Book): Finding[] {
     findings.push({
       area: 'print',
       severity: printers.length ? 'info' : 'error',
-      title: `KDP doesn't print ${trimLabel(trim)} ${binding}s`,
-      detail: printers.length ? `${printers.join(' and ')} does. For KDP, pick another trim size in the Style tab.` : 'Pick another trim size or binding in the Style tab.',
+      title: binding === 'hardcover' ? t('KDP doesn\'t print {size} hardcovers', { size: trimLabel(trim) }) : t('KDP doesn\'t print {size} paperbacks', { size: trimLabel(trim) }),
+      detail: printers.length ? t('{printers} does. For KDP, pick another trim size in the Style tab.', { printers: printers.join(t(' and ')) }) : t('Pick another trim size or binding in the Style tab.'),
     });
   }
 
-  const times = (n: number) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+  const times = (n: number) => (n === 1 ? t('once') : n === 2 ? t('twice') : t('{count} times', { count: n }));
   for (const v of nameVariants(book).slice(0, 12)) {
     findings.push({
       area: 'text',
       severity: 'info',
-      title: `“${v.variant}” (${times(v.variantCount)}) or “${v.name}” (${times(v.count)})?`,
-      detail: 'A name spelled two ways. If both are right, ignore this.',
+      title: t('“{variant}” ({variantTimes}) or “{name}” ({nameTimes})?', { variant: v.variant, variantTimes: times(v.variantCount), name: v.name, nameTimes: times(v.count) }),
+      detail: t('A name spelled two ways. If both are right, ignore this.'),
       elementId: v.elementId,
     });
   }
@@ -126,14 +127,14 @@ export function checkBook(book: Book): Finding[] {
     const text = docText(el.content);
     for (const [pattern, label] of PLACEHOLDERS) {
       if (pattern.test(text) || pattern.test(el.title)) {
-        findings.push({ area: 'text', severity: 'warning', title: `Placeholder text in “${elementName(el)}”`, detail: `Found “${label}”.`, elementId: el.id });
+        findings.push({ area: 'text', severity: 'warning', title: t('Placeholder text in “{section}”', { section: elementName(el) }), detail: t('Found “{text}”.', { text: label }), elementId: el.id });
         break;
       }
     }
     const figures = images(el.content.content);
     // Part and volume pages are often just a title.
     if (!GENERATED_KINDS.has(el.kind) && el.kind !== 'part' && el.kind !== 'volume' && !text.trim() && !figures.length) {
-      findings.push({ area: 'text', severity: 'warning', title: `“${elementName(el)}” is empty`, elementId: el.id });
+      findings.push({ area: 'text', severity: 'warning', title: t('“{section}” is empty', { section: elementName(el) }), elementId: el.id });
     }
     const missing = figures.filter((img) => !img.attrs.alt?.trim()).length;
     if (missing) {
@@ -141,8 +142,8 @@ export function checkBook(book: Book): Finding[] {
       findings.push({
         area: 'accessibility',
         severity: 'warning',
-        title: `${missing === 1 ? 'An image' : `${missing} images`} in “${elementName(el)}” ${missing === 1 ? 'has' : 'have'} no description`,
-        detail: 'Screen readers read the description aloud. Select the image in the editor to add one.',
+        title: missing === 1 ? t('An image in “{section}” has no description', { section: elementName(el) }) : t('{count} images in “{section}” have no description', { count: missing, section: elementName(el) }),
+        detail: t('Screen readers read the description aloud. Select the image in the editor to add one.'),
         elementId: el.id,
       });
     }
@@ -154,29 +155,31 @@ export function checkBook(book: Book): Finding[] {
         findings.push({
           area: 'print',
           severity: ppi < POOR_PPI ? 'warning' : 'info',
-          title: `An image in “${elementName(el)}” prints at ${ppi} PPI`,
-          detail: `It is ${info.width} × ${info.height} px. Printers recommend ${GOOD_PPI} PPI; ${ppi < POOR_PPI ? 'at this size it will look soft' : 'it will look slightly soft'}.`,
+          title: t('An image in “{section}” prints at {ppi} PPI', { section: elementName(el), ppi }),
+          detail: ppi < POOR_PPI
+            ? t('It is {width} × {height} px. Printers recommend {good} PPI; at this size it will look soft.', { width: info.width, height: info.height, good: GOOD_PPI })
+            : t('It is {width} × {height} px. Printers recommend {good} PPI; it will look slightly soft.', { width: info.width, height: info.height, good: GOOD_PPI }),
           elementId: el.id,
         });
       }
     }
   }
   const anyImages = book.elements.some((el) => images(el.content.content).length > 0);
-  if (anyImages && !undescribed) findings.push({ area: 'accessibility', severity: 'ok', title: 'Every image has a description' });
+  if (anyImages && !undescribed) findings.push({ area: 'accessibility', severity: 'ok', title: t('Every image has a description') });
 
   if (!meta.cover) {
-    findings.push({ area: 'ebook', severity: 'warning', title: 'No ebook cover', detail: 'Apple Books and Kobo expect the cover inside the EPUB. KDP and Google Play also take it separately.' });
+    findings.push({ area: 'ebook', severity: 'warning', title: t('No ebook cover'), detail: t('Apple Books and Kobo expect the cover inside the EPUB. KDP and Google Play also take it separately.') });
   } else {
     const cover = imageInfo(meta.cover);
     if (cover) {
       if (cover.width < 625 || cover.height < 1000) {
-        findings.push({ area: 'ebook', severity: 'error', title: `The cover is too small (${cover.width} × ${cover.height} px)`, detail: 'KDP needs at least 625 × 1000 px; 1600 × 2560 px is ideal.' });
+        findings.push({ area: 'ebook', severity: 'error', title: t('The cover is too small ({width} × {height} px)', { width: cover.width, height: cover.height }), detail: t('KDP needs at least 625 × 1000 px; 1600 × 2560 px is ideal.') });
       } else if (cover.height / cover.width < 1.5) {
-        findings.push({ area: 'ebook', severity: 'info', title: 'The cover is wider than most', detail: `It is ${cover.width} × ${cover.height} px. Stores display covers at about 1.6:1 (1600 × 2560 px).` });
+        findings.push({ area: 'ebook', severity: 'info', title: t('The cover is wider than most'), detail: t('It is {width} × {height} px. Stores display covers at about 1.6:1 (1600 × 2560 px).', { width: cover.width, height: cover.height }) });
       } else {
-        findings.push({ area: 'ebook', severity: 'ok', title: `Cover ${cover.width} × ${cover.height} px` });
+        findings.push({ area: 'ebook', severity: 'ok', title: t('Cover {width} × {height} px', { width: cover.width, height: cover.height }) });
       }
-      if (!/^image\/(jpeg|png)$/.test(cover.mediaType)) findings.push({ area: 'ebook', severity: 'warning', title: 'The cover isn’t a JPEG or PNG', detail: 'Stores accept JPEG covers everywhere; use JPEG or PNG.' });
+      if (!/^image\/(jpeg|png)$/.test(cover.mediaType)) findings.push({ area: 'ebook', severity: 'warning', title: t('The cover isn’t a JPEG or PNG'), detail: t('Stores accept JPEG covers everywhere; use JPEG or PNG.') });
     }
   }
   return findings;
@@ -199,16 +202,16 @@ export function checkLayout(book: Book, stats: LayoutStats): Finding[] {
   const binding = book.style.binding ?? 'paperback';
   const range = pageRange(binding);
   if (stats.pages < range.min) {
-    findings.push({ area: 'print', severity: 'error', title: `${stats.pages} pages is too short for a ${binding}`, detail: `${range.printer} needs at least ${range.min} pages. A larger body size or a smaller trim adds pages.` });
+    findings.push({ area: 'print', severity: 'error', title: binding === 'hardcover' ? t('{pages} pages is too short for a hardcover', { pages: stats.pages }) : t('{pages} pages is too short for a paperback', { pages: stats.pages }), detail: t('{printer} needs at least {min} pages. A larger body size or a smaller trim adds pages.', { printer: t(range.printer), min: range.min }) });
   } else if (stats.pages > range.max) {
-    findings.push({ area: 'print', severity: 'error', title: `${stats.pages} pages is too long for one ${binding}`, detail: `${range.printer} takes at most ${range.max} pages. A larger trim size fits more on each page.` });
+    findings.push({ area: 'print', severity: 'error', title: binding === 'hardcover' ? t('{pages} pages is too long for one hardcover', { pages: stats.pages }) : t('{pages} pages is too long for one paperback', { pages: stats.pages }), detail: t('{printer} takes at most {max} pages. A larger trim size fits more on each page.', { printer: t(range.printer), max: range.max }) });
   } else {
-    findings.push({ area: 'print', severity: 'ok', title: `${stats.pages} pages at ${trimLabel(trim)}`, detail: `Inside margin ${stats.inside} in, which meets KDP's minimum for this page count.` });
+    findings.push({ area: 'print', severity: 'ok', title: t('{pages} pages at {size}', { pages: stats.pages, size: trimLabel(trim) }), detail: t('Inside margin {inside} in, which meets KDP\'s minimum for this page count.', { inside: stats.inside }) });
   }
-  if (stats.pages % 2) findings.push({ area: 'print', severity: 'info', title: 'Odd page count', detail: 'Printers add a blank page at the end to make it even.' });
+  if (stats.pages % 2) findings.push({ area: 'print', severity: 'info', title: t('Odd page count'), detail: t('Printers add a blank page at the end to make it even.') });
   for (const run of stats.blankRuns) {
     if (run.length > 4) {
-      findings.push({ area: 'print', severity: 'warning', title: `${run.length} blank pages in a row from page ${run.start}`, detail: 'KDP rejects interiors with more than four consecutive blank pages mid-book.' });
+      findings.push({ area: 'print', severity: 'warning', title: t('{count} blank pages in a row from page {page}', { count: run.length, page: run.start }), detail: t('KDP rejects interiors with more than four consecutive blank pages mid-book.') });
     }
   }
   for (const img of stats.images) {
@@ -217,8 +220,8 @@ export function checkLayout(book: Book, stats: LayoutStats): Finding[] {
       findings.push({
         area: 'print',
         severity: img.ppi < POOR_PPI ? 'warning' : 'info',
-        title: `An image${el ? ` in “${elementName(el)}”` : ''} prints at ${img.ppi} PPI`,
-        detail: `Printers recommend ${GOOD_PPI} PPI.`,
+        title: el ? t('An image in “{section}” prints at {ppi} PPI', { section: elementName(el), ppi: img.ppi }) : t('An image prints at {ppi} PPI', { ppi: img.ppi }),
+        detail: t('Printers recommend {good} PPI.', { good: GOOD_PPI }),
         elementId: img.elementId,
       });
     }
@@ -234,7 +237,7 @@ export function deliveryFee(bytes: number): number {
 /** "about $0.21", or "under a cent" for small books. */
 export function feeText(bytes: number): string {
   const fee = deliveryFee(bytes);
-  return fee < 0.01 ? 'under a cent' : `about $${fee.toFixed(2)}`;
+  return fee < 0.01 ? t('under a cent') : t('about ${fee}', { fee: fee.toFixed(2) });
 }
 
 export function formatSize(bytes: number): string {
@@ -254,12 +257,12 @@ export function checkEpub(messages: EpubMessage[], bytes: number): Finding[] {
   for (const m of problems) {
     findings.push({ area: 'ebook', severity: m.severity === 'warning' ? 'warning' : 'error', title: `EPUBCheck ${m.id}`, detail: `${m.message}${m.path ? ` (${m.path})` : ''}` });
   }
-  if (!problems.length) findings.push({ area: 'ebook', severity: 'ok', title: 'The EPUB passes validation', detail: 'Checked with epubcheck-ts, a port of the official EPUBCheck that stores use.' });
+  if (!problems.length) findings.push({ area: 'ebook', severity: 'ok', title: t('The EPUB passes validation'), detail: t('Checked with epubcheck-ts, a port of the official EPUBCheck that stores use.') });
   findings.push({
     area: 'ebook',
     severity: 'info',
-    title: `The EPUB is ${formatSize(bytes)}`,
-    detail: `At KDP’s 70% royalty, delivery costs ${feeText(bytes)} per sale in the US store ($${KDP_DELIVERY_PER_MB.toFixed(2)} per MB).`,
+    title: t('The EPUB is {size}', { size: formatSize(bytes) }),
+    detail: t('At KDP’s 70% royalty, delivery costs {fee} per sale in the US store (${rate} per MB).', { fee: feeText(bytes), rate: KDP_DELIVERY_PER_MB.toFixed(2) }),
   });
   return findings;
 }

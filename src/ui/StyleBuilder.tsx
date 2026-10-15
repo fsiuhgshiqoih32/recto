@@ -8,6 +8,7 @@ import { downloadBlob } from './exporters';
 import { Field } from './fields';
 import { Icon } from './icons';
 import type { BookActions } from './useBook';
+import { N_, t } from '../i18n/ui';
 
 /** A select whose first option keeps the book style's own choice. */
 function Choice<T extends string>({ label, value, fallback, options, onChange, hint }: {
@@ -21,8 +22,8 @@ function Choice<T extends string>({ label, value, fallback, options, onChange, h
   return (
     <Field label={label} hint={hint}>
       <select value={value ?? ''} onChange={(event) => onChange((event.target.value || undefined) as T | undefined)}>
-        <option value="">Style’s own ({fallback})</option>
-        {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+        <option value="">{t('Style’s own ({choice})', { choice: t(fallback) })}</option>
+        {options.map((option) => <option key={option.id} value={option.id}>{t(option.label)}</option>)}
       </select>
     </Field>
   );
@@ -55,15 +56,15 @@ export function StyleBuilder({ book, actions }: { book: Book; actions: BookActio
     set({ css: result.css || undefined });
     setNotes(result.notes);
     const rules = result.css ? result.css.split('\n').length : 0;
-    setStatus(css.trim() ? `Applied ${rules} ${rules === 1 ? 'rule' : 'rules'}.` : 'Advanced CSS cleared.');
+    setStatus(!css.trim() ? t('Advanced CSS cleared.') : rules === 1 ? t('Applied 1 rule.') : t('Applied {count} rules.', { count: rules }));
   };
 
   const save = () => {
-    const name = window.prompt('Name this style', `${base.name}, ${book.meta.title || 'my book'}`)?.trim();
+    const name = window.prompt(t('Name this style'), `${base.name}, ${book.meta.title || t('my book')}`)?.trim();
     if (!name) return;
     const pack = stylePackOf(book, name);
     downloadBlob(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }), fileNameFor({ ...book, meta: { ...book.meta, title: name } }, STYLE_PACK_EXTENSION.slice(1)));
-    setStatus(`Saved “${name}”. Share the file, or load it into another book.`);
+    setStatus(t('Saved “{name}”. Share the file, or load it into another book.', { name }));
   };
 
   const load = async (file: File) => {
@@ -75,46 +76,46 @@ export function StyleBuilder({ book, actions }: { book: Book; actions: BookActio
       actions.updateStyle({ theme: pack.theme, custom: isCustomized(next) ? next : undefined });
       setCss(filtered.css);
       setNotes(filtered.notes);
-      setStatus(`Loaded “${pack.name}”${pack.author ? ` by ${pack.author}` : ''}, built on ${THEMES[pack.theme].name}.`);
+      setStatus(pack.author ? t('Loaded “{name}” by {author}, built on {style}.', { name: pack.name, author: pack.author, style: THEMES[pack.theme].name }) : t('Loaded “{name}”, built on {style}.', { name: pack.name, style: THEMES[pack.theme].name }));
     } catch (error) {
       setNotes([]);
-      setStatus(error instanceof Error ? error.message : 'That style couldn’t be loaded.');
+      setStatus(error instanceof Error ? error.message : t('That style couldn’t be loaded.'));
     }
   };
 
   return (
     <details className="style-builder" open={customized || undefined}>
       <summary>
-        <span>Customize {base.name}</span>
-        {customized && <span className="badge">Changed</span>}
+        <span>{t('Customize {style}', { style: base.name })}</span>
+        {customized && <span className="badge">{t('Changed')}</span>}
       </summary>
-      <p className="field-hint">Changes apply on top of the style you pick above, in the ebook, the print edition and Word.</p>
-      <Choice label="Body font" value={custom.bodyFont} fallback={fontName(base.fonts.body)} options={BOOK_FONTS} onChange={(bodyFont) => set({ bodyFont })} />
-      <Choice label="Heading font" value={custom.headingFont} fallback={fontName(base.fonts.heading)} options={BOOK_FONTS} onChange={(headingFont) => set({ headingFont })} />
-      <Choice label="Chapter numbers" value={custom.chapterLabel} fallback={LABEL_CHOICES.find((l) => l.id === base.chapterLabel)?.label ?? ''} options={LABEL_CHOICES} onChange={(chapterLabel) => set({ chapterLabel })} hint="Shown in the book’s language: Chapter One, Capítulo 1, 第一章." />
-      <Choice label="Headings" value={custom.headingAlign} fallback="as styled" options={[{ id: 'center', label: 'Centered' }, { id: 'start', label: 'Aligned to the text' }] as const} onChange={(headingAlign) => set({ headingAlign })} />
-      <Choice label="Chapter titles" value={custom.titleCase} fallback="as styled" options={[{ id: 'as-typed', label: 'As typed' }, { id: 'capitals', label: 'Capitals' }, { id: 'small-caps', label: 'Small capitals' }] as const} onChange={(titleCase) => set({ titleCase })} />
-      <Choice label="Title size" value={custom.titleSize} fallback="as styled" options={[{ id: 'small', label: 'Small' }, { id: 'medium', label: 'Medium' }, { id: 'large', label: 'Large' }] as const} onChange={(titleSize) => set({ titleSize })} />
-      <Choice label="Ornament" value={custom.ornament} fallback={ORNAMENT_CHOICES.find((o) => o.id === base.ornament)?.label ?? ''} options={ORNAMENT_CHOICES} onChange={(ornament) => set({ ornament })} hint="Also marks scene breaks." />
-      <Choice label="Ornament by headings" value={custom.headingOrnament} fallback={base.headingOrnament ?? 'none'} options={[{ id: 'above', label: 'Above' }, { id: 'below', label: 'Below' }, { id: 'none', label: 'None' }] as const} onChange={(headingOrnament) => set({ headingOrnament })} />
-      <Choice label="Paragraphs" value={custom.paragraphs} fallback="indented" options={[{ id: 'indented', label: 'Indented' }, { id: 'spaced', label: 'Spaced, no indent' }] as const} onChange={(paragraphs) => set({ paragraphs })} />
-      <Choice label="Line spacing" value={custom.lineSpacing} fallback="normal" options={[{ id: 'tight', label: 'Tight' }, { id: 'loose', label: 'Loose' }] as const} onChange={(lineSpacing) => set({ lineSpacing })} />
+      <p className="field-hint">{t('Changes apply on top of the style you pick above, in the ebook, the print edition and Word.')}</p>
+      <Choice label={t('Body font')} value={custom.bodyFont} fallback={fontName(base.fonts.body)} options={BOOK_FONTS} onChange={(bodyFont) => set({ bodyFont })} />
+      <Choice label={t('Heading font')} value={custom.headingFont} fallback={fontName(base.fonts.heading)} options={BOOK_FONTS} onChange={(headingFont) => set({ headingFont })} />
+      <Choice label={t('Chapter numbers')} value={custom.chapterLabel} fallback={LABEL_CHOICES.find((l) => l.id === base.chapterLabel)?.label ?? ''} options={LABEL_CHOICES} onChange={(chapterLabel) => set({ chapterLabel })} hint={t('Shown in the book’s language: Chapter One, Capítulo 1, 第一章.')} />
+      <Choice label={t('Headings')} value={custom.headingAlign} fallback={N_('as styled')} options={[{ id: 'center', label: N_('Centered') }, { id: 'start', label: N_('Aligned to the text') }] as const} onChange={(headingAlign) => set({ headingAlign })} />
+      <Choice label={t('Chapter titles')} value={custom.titleCase} fallback={N_('as styled')} options={[{ id: 'as-typed', label: N_('As typed') }, { id: 'capitals', label: N_('Capitals') }, { id: 'small-caps', label: N_('Small capitals') }] as const} onChange={(titleCase) => set({ titleCase })} />
+      <Choice label={t('Title size')} value={custom.titleSize} fallback={N_('as styled')} options={[{ id: 'small', label: N_('Small') }, { id: 'medium', label: N_('Medium') }, { id: 'large', label: N_('Large') }] as const} onChange={(titleSize) => set({ titleSize })} />
+      <Choice label={t('Ornament')} value={custom.ornament} fallback={ORNAMENT_CHOICES.find((o) => o.id === base.ornament)?.label ?? ''} options={ORNAMENT_CHOICES} onChange={(ornament) => set({ ornament })} hint={t('Also marks scene breaks.')} />
+      <Choice label={t('Ornament by headings')} value={custom.headingOrnament} fallback={base.headingOrnament === 'above' ? N_('above') : base.headingOrnament === 'below' ? N_('below') : N_('none')} options={[{ id: 'above', label: N_('Above') }, { id: 'below', label: N_('Below') }, { id: 'none', label: N_('None') }] as const} onChange={(headingOrnament) => set({ headingOrnament })} />
+      <Choice label={t('Paragraphs')} value={custom.paragraphs} fallback={N_('indented')} options={[{ id: 'indented', label: N_('Indented') }, { id: 'spaced', label: N_('Spaced, no indent') }] as const} onChange={(paragraphs) => set({ paragraphs })} />
+      <Choice label={t('Line spacing')} value={custom.lineSpacing} fallback={N_('normal')} options={[{ id: 'tight', label: N_('Tight') }, { id: 'loose', label: N_('Loose') }] as const} onChange={(lineSpacing) => set({ lineSpacing })} />
 
       <label className="field" htmlFor={`${id}-css`}>
-        <span className="field-label">Advanced CSS</span>
+        <span className="field-label">{t('Advanced CSS')}</span>
       </label>
       <textarea id={`${id}-css`} className="css-input" rows={6} spellCheck={false} value={css} onChange={(event) => setCss(event.target.value)}
         placeholder={'.chapter-title { letter-spacing: 0.1em; }\n.el blockquote { font-style: italic; }'} aria-describedby={`${id}-css-hint`} />
-      <span id={`${id}-css-hint`} className="field-hint">Type, spacing, borders and page breaks for the book’s elements. Nothing that loads from outside the book: no url(), @import or other fonts.</span>
+      <span id={`${id}-css-hint`} className="field-hint">{t('Type, spacing, borders and page breaks for the book’s elements. Nothing that loads from outside the book: no url(), @import or other fonts.')}</span>
       <div className="builder-actions">
-        <button type="button" className="btn" onClick={() => void applyCss()}>Apply CSS</button>
+        <button type="button" className="btn" onClick={() => void applyCss()}>{t('Apply CSS')}</button>
       </div>
       {!!notes.length && <ul className="css-notes">{notes.map((note) => <li key={note}>{note}</li>)}</ul>}
 
       <div className="builder-actions">
-        <button type="button" className="btn" onClick={save}><Icon name="download" />Save style…</button>
-        <button type="button" className="btn" onClick={() => loadInput.current?.click()}><Icon name="upload" />Load style…</button>
-        {customized && <button type="button" className="btn btn-quiet" onClick={() => { actions.updateStyle({ custom: undefined }); setCss(''); setNotes([]); setStatus(`Back to ${base.name} as designed.`); }}>Reset</button>}
+        <button type="button" className="btn" onClick={save}><Icon name="download" />{t('Save style…')}</button>
+        <button type="button" className="btn" onClick={() => loadInput.current?.click()}><Icon name="upload" />{t('Load style…')}</button>
+        {customized && <button type="button" className="btn btn-quiet" onClick={() => { actions.updateStyle({ custom: undefined }); setCss(''); setNotes([]); setStatus(t('Back to {style} as designed.', { style: base.name })); }}>{t('Reset')}</button>}
         <input ref={loadInput} type="file" accept={`${STYLE_PACK_EXTENSION},application/json`} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void load(file); event.target.value = ''; }} />
       </div>
       {status && <p className="field-hint" role="status">{status}</p>}

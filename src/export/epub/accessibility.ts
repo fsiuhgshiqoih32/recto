@@ -4,14 +4,15 @@
 // text alternatives, navigation, and whether the text reflows.
 
 import type { BlockNode, Book } from '../../model/book';
+import { N_, t } from '../../i18n/ui';
 
 /** European Accessibility Act exemptions an author may declare (W3C a11y:exemption). */
 export type Exemption = 'eaa-microenterprise' | 'eaa-disproportionate-burden' | 'eaa-fundamental-alteration';
 
 export const EXEMPTIONS: { id: Exemption; label: string; hint: string }[] = [
-  { id: 'eaa-microenterprise', label: 'Microenterprise', hint: 'Fewer than 10 people and under €2 million a year. Most independent authors qualify.' },
-  { id: 'eaa-disproportionate-burden', label: 'Disproportionate burden', hint: 'Meeting the requirements would cost more than the publisher can reasonably bear.' },
-  { id: 'eaa-fundamental-alteration', label: 'Fundamental alteration', hint: 'Meeting the requirements would fundamentally change the book.' },
+  { id: 'eaa-microenterprise', label: N_('Microenterprise'), hint: N_('Fewer than 10 people and under €2 million a year. Most independent authors qualify.') },
+  { id: 'eaa-disproportionate-burden', label: N_('Disproportionate burden'), hint: N_('Meeting the requirements would cost more than the publisher can reasonably bear.') },
+  { id: 'eaa-fundamental-alteration', label: N_('Fundamental alteration'), hint: N_('Meeting the requirements would fundamentally change the book.') },
 ];
 
 /** The conformance string for a book the author has checked against WCAG 2.2 AA. */
@@ -125,20 +126,20 @@ export interface StoreAnswer {
 export function storeAnswers(meta: AccessibilityMetadata, facts: AccessibilityFacts): StoreAnswer[] {
   const has = (feature: string) => meta.features.includes(feature);
   return [
-    { question: 'Can a screen reader read the whole book?', answer: meta.sufficient.includes('textual') ? 'Yes' : 'Mostly: some images have no text description' },
-    { question: 'Can readers change the font, size and colors?', answer: has('displayTransformability') ? 'Yes (reflowable text)' : 'No' },
-    { question: 'Is there a table of contents?', answer: 'Yes' },
-    { question: 'Is there structured navigation (headings)?', answer: 'Yes' },
+    { question: t('Can a screen reader read the whole book?'), answer: meta.sufficient.includes('textual') ? t('Yes') : t('Mostly: some images have no text description') },
+    { question: t('Can readers change the font, size and colors?'), answer: has('displayTransformability') ? t('Yes (reflowable text)') : t('No') },
+    { question: t('Is there a table of contents?'), answer: t('Yes') },
+    { question: t('Is there structured navigation (headings)?'), answer: t('Yes') },
     {
-      question: 'Do images have text descriptions?',
-      answer: !facts.images ? 'Not applicable (no images)' : has('alternativeText') ? 'Yes, all of them' : `No: ${facts.images - facts.described} of ${facts.images} are missing`,
+      question: t('Do images have text descriptions?'),
+      answer: !facts.images ? t('Not applicable (no images)') : has('alternativeText') ? t('Yes, all of them') : t('No: {missing} of {total} are missing', { missing: facts.images - facts.described, total: facts.images }),
     },
-    { question: 'Are page numbers from the print edition included?', answer: has('printPageNumbers') ? 'Yes' : 'No' },
-    { question: 'Hazards (flashing, motion, sound)', answer: 'None' },
-    { question: 'Conformance', answer: meta.conformsTo ?? 'Not claimed' },
+    { question: t('Are page numbers from the print edition included?'), answer: has('printPageNumbers') ? t('Yes') : t('No') },
+    { question: t('Hazards (flashing, motion, sound)'), answer: t('None') },
+    { question: t('Conformance'), answer: meta.conformsTo ?? t('Not claimed') },
     {
-      question: 'European Accessibility Act exemption',
-      answer: meta.exemption ? EXEMPTIONS.find((e) => e.id === meta.exemption)!.label : 'None declared',
+      question: t('European Accessibility Act exemption'),
+      answer: meta.exemption ? t(EXEMPTIONS.find((e) => e.id === meta.exemption)!.label) : t('None declared'),
     },
   ];
 }
