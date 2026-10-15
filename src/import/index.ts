@@ -1,11 +1,13 @@
 import { generateJSON } from '@tiptap/html';
 import mammoth from 'mammoth';
-import MarkdownIt from 'markdown-it';
+import MarkdownIt, { type PluginSimple } from 'markdown-it';
+import footnotes from 'markdown-it-footnote';
 import type { Book, BookElement, Doc } from '../model/book';
 import { emptyDoc, normalizeOrder } from '../model/book';
 import { createElement, newBook } from '../model/defaults';
 import { bookExtensions } from '../editor/extensions';
 import { decodeText, detectLanguage, htmlCharset } from '../i18n/detect';
+import { extractNotes } from './notes';
 import { type ImportedElement, splitManuscript, textToHtml } from './split';
 
 export type ManuscriptFormat = 'docx' | 'markdown' | 'text' | 'html';
@@ -29,7 +31,8 @@ export async function docxToHtml(data: ArrayBuffer): Promise<{ html: string; war
 }
 
 export function markdownToHtml(text: string): string {
-  return new MarkdownIt({ html: false, typographer: true }).render(text);
+  // The plugin's typings target an older markdown-it type layout; it works with this one.
+  return new MarkdownIt({ html: false, typographer: true }).use(footnotes as unknown as PluginSimple).render(text);
 }
 
 export interface Manuscript {
@@ -83,7 +86,7 @@ function toElement(imported: ImportedElement, book: Book): BookElement {
 /** Builds a new book around an imported manuscript, with standard front and back matter in its language. */
 export function bookFromManuscript(html: string, title: string, author = '', language = 'en'): Book {
   const book = newBook({ title, author, language });
-  const imported = splitManuscript(html).map((el) => toElement(el, book));
+  const imported = splitManuscript(extractNotes(html)).map((el) => toElement(el, book));
   const hasAbout = imported.some((el) => el.kind === 'about-author');
   book.elements = normalizeOrder([
     createElement('title-page', book.meta),

@@ -138,6 +138,19 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
         label="Chapters start on a right-hand page"
         hint="Blank left-hand pages are added where needed."
       />
+      <Toggle
+        checked={!!style.bleed}
+        onChange={(bleed) => actions.updateStyle({ bleed })}
+        label="Print with bleed"
+        hint="Pages grow 0.125 in past the trim at the top, bottom and outside edge, so full-page images can run off the edge. Turn it on only if the book has such images."
+      />
+      <Field label="Notes in print" hint="Ebooks always show notes as pop-up footnotes.">
+        <select value={style.notes ?? 'chapter'} onChange={(e) => actions.updateStyle({ notes: e.target.value as 'chapter' | 'book' | 'page' })}>
+          <option value="chapter">At the end of each chapter</option>
+          <option value="book">In a Notes section at the end of the book</option>
+          <option value="page">At the foot of the page (footnotes)</option>
+        </select>
+      </Field>
 
       <h3 className="panel-heading">Text</h3>
       <Toggle checked={style.dropCaps} onChange={(dropCaps) => actions.updateStyle({ dropCaps })} label="Drop caps" hint="Used by styles that have them." />
@@ -170,6 +183,30 @@ export function SectionPanel({ book, element, actions, onEdit, onShowBookDetails
     </Field>
     {element.kind === 'chapter' && <Field label="Section subtitle"><input value={element.subtitle ?? ''} lang={book.meta.language} dir="auto" onChange={(event) => update({ subtitle: event.target.value })} placeholder="Optional" /></Field>}
     {chapterLike && <Toggle checked={element.numbered !== false} onChange={(numbered) => update({ numbered })} label="Numbered" hint="Chapter numbers update automatically." />}
+    {chapterLike && (
+      <div className="field">
+        <span className="field-label">Heading image</span>
+        <div className="cover-row">
+          {element.headingImage ? <img className="heading-thumb" src={element.headingImage} alt="" /> : null}
+          <div className="cover-actions">
+            <label className="btn">
+              {element.headingImage ? 'Replace…' : 'Choose image…'}
+              <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => update({ headingImage: String(reader.result) });
+                  reader.readAsDataURL(file);
+                }
+                e.target.value = '';
+              }} />
+            </label>
+            {element.headingImage && <button type="button" className="btn btn-quiet" onClick={() => update({ headingImage: undefined })}>Remove</button>}
+            <span className="field-hint">Shown above the heading, in both editions. Decorative, so screen readers skip it.</span>
+          </div>
+        </div>
+      </div>
+    )}
     {element.kind !== 'title-page' && <Toggle checked={element.includeInToc} onChange={(includeInToc) => update({ includeInToc })} label="Listed in contents" />}
     <Field label="Include in" hint={element.include === 'ebook' ? 'Left out of the print edition: a newsletter sign-up or store links, for example.' : element.include === 'print' ? 'Left out of the ebook: an order form or a printed-edition note, for example.' : undefined}>
       <select value={element.include ?? 'both'} onChange={(event) => update({ include: event.target.value === 'both' ? undefined : (event.target.value as Edition) })}>

@@ -88,6 +88,8 @@ export function ElementPane({ book, element, actions, onShowBookDetails, active 
           placeholder={element.kind === 'chapter' ? 'Start writing your chapter…' : 'Write here…'}
           onChange={(content) => update({ content })}
           active={active}
+          bleed={!!book.style.bleed}
+          onEnableBleed={() => actions.updateStyle({ bleed: true })}
         />
       )}
     </div>

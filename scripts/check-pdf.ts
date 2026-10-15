@@ -12,6 +12,7 @@ import type { Page } from '@playwright/test';
 import { OPS, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { renderCoverPdf, renderPdf } from '../cli/pdf';
 import { coverWrap } from '../src/export/cover/wrap';
+import { richBook } from './fixtures';
 import type { ThemeId, TrimId } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
 import { TRIMS, pageMargins, trimLabel } from '../src/export/print/pageCss';
@@ -263,6 +264,28 @@ const combos: [TrimId, ThemeId][] = process.argv.includes('--all')
   : [['5.5x8.5', 'octavo'], ['6x9', 'broadsheet']];
 for (const [trim, theme] of combos) await checkBook(trim, theme);
 for (const sample of LANGUAGE_SAMPLES) await checkLanguage(sample);
+
+// Every kind of block, printed with bleed and notes at the foot of the page.
+{
+  const book = richBook();
+  book.style.bleed = true;
+  book.style.notes = 'page';
+  const path = join('out', 'rich-bleed.pdf');
+  let stranded: string[] = [];
+  const { pages: count } = await renderPdf(book, path, { inspect: async (page) => void (stranded = await strandedLines(page)) });
+  const pages = await readPdf(path);
+  const t = TRIMS[book.style.trim];
+  console.log(`
+rich content with bleed: ${count} pages → ${path}`);
+  check(pages.every((p) => Math.abs(p.width - (t.width + 0.125) * 72) < 0.6 && Math.abs(p.height - (t.height + 0.25) * 72) < 0.6), `every page is the trim plus bleed, ${t.width + 0.125} × ${t.height + 0.25} in`);
+  check(pages.reduce((n, p) => n + p.annotations, 0) === 0, 'footnotes, store links and the contents add no link annotations');
+  const inks = [...new Set(pages.flatMap((p) => [...p.colors]))].filter((c) => c !== '#000000' && c !== '#ffffff');
+  check(inks.length === 0, `rules, borders and bubbles are pure black${inks.length ? ` (also found ${inks.join(', ')})` : ''}`);
+  check(stranded.length === 0, `no widows or orphans${stranded.length ? ` (${stranded.join('; ')})` : ''}`);
+  const cited = pages.find((p) => squash(p.items.map((it) => it.str).join('')).includes(squash('The ledger recorded the wind')));
+  const foot = cited ? squash(cited.items.filter((it) => it.y > 0.7).map((it) => it.str).join('')) : '';
+  check(foot.includes(squash('1. In knots, from 1931 on')) && foot.includes(squash('2. Measured by how many')), 'both footnotes sit at the foot of the page that cites them, numbered 1 and 2');
+}
 
 // A paperback wrap cover: one page at the exact wrap size, with the spine and back text.
 {

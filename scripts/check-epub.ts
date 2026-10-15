@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { EpubCheck } from '@likecoin/epubcheck-ts';
 import { writeEpub } from '../cli/epub';
 import type { Book } from '../src/model/book';
+import { richBook } from './fixtures';
 import { paragraphs } from '../src/model/book';
 import { createElement, newBook } from '../src/model/defaults';
 import { sampleBook } from '../src/model/sample';
@@ -34,9 +35,18 @@ function inLanguage(language: string, text: string): Book {
   return book;
 }
 
+/** Every kind of block and a note, so their markup is validated too. */
+function rich(): Book {
+  const book = richBook();
+  book.meta.cover = png;
+  book.style.embedFonts = true;
+  return book;
+}
+
 const books: [string, Book][] = [
   ['sample', sampleBook()],
   ['illustrated', illustrated()],
+  ['rich', rich()],
   ['arabic', inLanguage('ar', 'كانت منارة هارو بوينت تضاء كل مساء في الخامسة والربع، وكانت آدا تكتب في الدفتر الأخضر الريح والضباب.')],
   ['japanese', inLanguage('ja', 'ハロウ岬の灯台は毎夕五時十五分に灯り、エイダは緑の帳簿に風と霧のことを書き留めた。')],
 ];

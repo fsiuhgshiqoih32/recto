@@ -12,14 +12,48 @@ export interface Mark {
 
 export type InlineNode =
   | { type: 'text'; text: string; marks?: Mark[] }
-  | { type: 'hardBreak' };
+  | { type: 'hardBreak' }
+  /** A footnote or endnote: its text lives at the point it's cited. */
+  | { type: 'note'; attrs: { content: InlineNode[] } };
+
+/** How an image sits in print: in the text, on a page of its own, bleeding off the page, or across two pages. */
+export type ImageLayout = 'inline' | 'page' | 'bleed' | 'spread';
+
+export type CalloutTone = 'note' | 'tip' | 'warning';
+
+/** Stores a link can point to; "universal" is a books2read-style link for any other store. */
+export type Store = 'amazon' | 'apple' | 'kobo' | 'google' | 'nook' | 'universal';
+
+export interface ListItemNode {
+  type: 'listItem';
+  content?: BlockNode[];
+}
+
+export interface TableCellNode {
+  type: 'tableCell' | 'tableHeader';
+  attrs?: { colspan?: number; rowspan?: number; colwidth?: number[] | null };
+  content?: BlockNode[];
+}
+
+export interface TableRowNode {
+  type: 'tableRow';
+  content?: TableCellNode[];
+}
 
 export type BlockNode =
   | { type: 'paragraph'; attrs?: { textAlign?: TextAlign | null }; content?: InlineNode[] }
   | { type: 'heading'; attrs?: { level?: number; textAlign?: TextAlign | null }; content?: InlineNode[] }
   | { type: 'blockquote'; content?: BlockNode[] }
   | { type: 'sceneBreak' }
-  | { type: 'image'; attrs: { src: string; alt?: string | null; title?: string | null } };
+  | { type: 'image'; attrs: { src: string; alt?: string | null; title?: string | null; layout?: ImageLayout | null; caption?: string | null } }
+  | { type: 'bulletList'; content?: ListItemNode[] }
+  | { type: 'orderedList'; attrs?: { start?: number | null }; content?: ListItemNode[] }
+  /** Poetry: each paragraph is a stanza, its lines separated by hard breaks. */
+  | { type: 'verse'; content?: BlockNode[] }
+  | { type: 'callout'; attrs?: { tone?: CalloutTone | null }; content?: BlockNode[] }
+  | { type: 'table'; content?: TableRowNode[] }
+  | { type: 'textMessage'; attrs?: { side?: 'sent' | 'received' | null; sender?: string | null }; content?: InlineNode[] }
+  | { type: 'storeLinks'; attrs: { label: string; links: Partial<Record<Store, string>> } };
 
 export interface Doc {
   type: 'doc';
@@ -52,6 +86,8 @@ export interface BookElement {
   includeInToc: boolean;
   /** Only in this edition (an ebook-only newsletter page, a print-only order form). Absent means both. */
   include?: Edition;
+  /** Chapters and parts: an image above the heading, as a data: URL. */
+  headingImage?: string;
   content: Doc;
 }
 
@@ -91,6 +127,10 @@ export interface BookStyle {
   embedFonts: boolean;
   /** Paperback (default) or hardcover: sets the trims and page counts printers allow. */
   binding?: Binding;
+  /** Where notes go in print: the end of each chapter (default), a Notes section at the end of the book, or the foot of the page. */
+  notes?: 'chapter' | 'book' | 'page';
+  /** Print with bleed (0.125 in past the trim), for images that run off the page. */
+  bleed?: boolean;
   /** Large-print edition: 16 pt type, ragged right, no hyphenation. */
   largePrint?: boolean;
   /** Paper stock for the print edition; sets the spine width. Defaults to white. */
@@ -169,15 +209,22 @@ export function newId(): string {
 }
 
 /** Plain text of a doc, used for word counts and page estimates. */
+const INLINE = new Set(['text', 'hardBreak', 'note']);
+
+/** Plain text of inline content; notes count as text too. */
+export function inlineText(nodes: InlineNode[] | undefined): string {
+  return (nodes ?? []).map((n) => (n.type === 'text' ? n.text : n.type === 'note' ? ` ${inlineText(n.attrs.content)}` : ' ')).join('');
+}
+
 export function docText(doc: Doc): string {
   const out: string[] = [];
-  const walk = (blocks: BlockNode[] | undefined) => {
-    for (const block of blocks ?? []) {
-      if (block.type === 'paragraph' || block.type === 'heading') {
-        out.push((block.content ?? []).map((n) => (n.type === 'text' ? n.text : ' ')).join(''));
-      } else if (block.type === 'blockquote') {
-        walk(block.content);
-      }
+  // Any node with content holds either inline nodes (a line of text) or more blocks.
+  const walk = (nodes: { type: string; content?: unknown[] }[] | undefined) => {
+    for (const node of nodes ?? []) {
+      const content = node.content as { type: string }[] | undefined;
+      if (!content?.length) continue;
+      if (INLINE.has(content[0].type)) out.push(inlineText(content as InlineNode[]));
+      else walk(content as { type: string; content?: unknown[] }[]);
     }
   };
   walk(doc.content);

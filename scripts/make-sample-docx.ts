@@ -18,6 +18,8 @@ function runs(nodes: InlineNode[] | undefined): string {
   return (nodes ?? [])
     .map((node) => {
       if (node.type === 'hardBreak') return '<w:r><w:br/></w:r>';
+      // The sample has no notes; a real exporter would write them to footnotes.xml.
+      if (node.type === 'note') return '';
       const props = (node.marks ?? [])
         .map((m) => ({ italic: '<w:i/>', bold: '<w:b/>', smallCaps: '<w:smallCaps/>', link: '' })[m.type])
         .join('');

@@ -28,6 +28,9 @@ body { margin: 0 3%; line-height: 1.45; widows: 2; orphans: 2; }
 .cover img { max-width: 100%; max-height: 98vh; }
 nav#toc ol { list-style: none; padding-left: 0; padding-right: 0; }
 nav#toc ol ol { padding-inline-start: 1.5em; }
+.figure-full img.figure { max-height: 95vh; }
+.heading-image img { max-height: 35vh; }
+img.figure { max-width: 100%; }
 ${theme.css}
 ${languageCss(lang)}`;
 }

@@ -9,6 +9,8 @@ import { baseCss, languageCss } from '../../themes';
 import { bookFonts, fontFaceCss } from '../../themes/fonts';
 
 import { TRIMS, type Trim, isLarge } from './trims';
+import { notePlacement } from '../../render/html';
+import { BLEED } from '../cover/wrap';
 
 export { TRIMS, type Trim, trimLabel } from './trims';
 
@@ -59,6 +61,22 @@ export function estimatePages(source: Book): number {
   return Math.ceil(words / wordsPerPage + cjk / charsPerPage + book.elements.length * 1.5);
 }
 
+/**
+ * Notes at the foot of the page, laid out by paged.js's float: footnote. The
+ * numbers are Recto's own, written into the text and the note: paged.js's
+ * footnote counters repeat numbers (pagedjs #59), resetting them on @page
+ * breaks the contents page's references (#91), and its generated call is a
+ * link, which print PDFs shouldn't have. So its call and marker are hidden.
+ */
+const FOOTNOTE_CSS = `
+.footnote { float: footnote; font-size: 0.8em; line-height: 1.3; text-indent: 0; text-align: start; hyphens: manual; -webkit-hyphens: manual; }
+.footnote::footnote-call { content: none; }
+.footnote::footnote-marker { content: none; }
+a[data-footnote-call] { display: none; }
+.footnote .note-num { margin-inline-end: 0.15em; }
+@page { @footnote { float: bottom; border-top: 0.5pt solid #000; padding-top: 0.35em; margin-top: 0.8em; } }
+`;
+
 /** Large print: ragged right, no hyphenation, open leading (after the APH and ALLi guidance). */
 const LARGE_PRINT_CSS = `
 body { line-height: 1.5; }
@@ -87,13 +105,21 @@ export function printCss(book: Book, opts: { pages: number; fontUrl: (file: stri
   const blank = '@top-center { content: none; } @bottom-center { content: none; }';
   const sink = (fraction: number) => `${(contentHeight * fraction).toFixed(2)}in`;
 
-  const [evenLeft, evenRight] = rtl ? [m.inside, m.outside] : [m.outside, m.inside];
+  // Bleed adds 0.125 in at the top, bottom and outside edge (not the spine): KDP's
+  // bleed page is the trim plus 0.125 in wide and 0.25 in tall. Margins grow to match.
+  const bleed = book.style.bleed ? BLEED : 0;
+  const pageWidth = +(trim.width + bleed).toFixed(3);
+  const pageHeight = +(trim.height + 2 * bleed).toFixed(3);
+  const top = +(m.top + bleed).toFixed(3);
+  const bottom = +(m.bottom + bleed).toFixed(3);
+  const outside = +(m.outside + bleed).toFixed(3);
+  const [evenLeft, evenRight] = rtl ? [m.inside, outside] : [outside, m.inside];
   return `${fontFaceCss(bookFonts([theme.fonts.body, theme.fonts.heading], lang), opts.fontUrl, opts.text)}
 ${baseCss(theme, lang)}
 ${theme.css}
 @page {
-  size: ${trim.width}in ${trim.height}in;
-  margin: ${m.top}in ${m.outside}in ${m.bottom}in ${m.inside}in;
+  size: ${pageWidth}in ${pageHeight}in;
+  margin: ${top}in ${outside}in ${bottom}in ${m.inside}in;
 }
 @page :left {
   margin-left: ${evenLeft}in;
@@ -134,6 +160,19 @@ body { margin: 0; color: #000; line-height: 1.42; font-family: var(--body-font);
 .toc-list span.toc-entry::after { content: target-counter(attr(data-target), page); margin-inline-start: auto; }
 .toc-list a.toc-entry::after { content: target-counter(attr(href), page); margin-inline-start: auto; }
 img.figure { max-height: ${(contentHeight * 0.6).toFixed(2)}in; }
+.heading-image img { max-height: ${(contentHeight * 0.3).toFixed(2)}in; }
+.el .callout, .el .message, .el .verse .stanza, .el .table tr, .el figure { break-inside: avoid; }
+.el .table thead { display: table-header-group; }
+.figure-page { break-before: page; break-after: page; height: ${(contentHeight - 0.05).toFixed(2)}in; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.figure-page img.figure { max-width: 100%; max-height: ${(contentHeight * 0.9).toFixed(2)}in; }
+@page fullbleed { margin: 0; ${blank} }
+.figure-bleed, .figure-spread { page: fullbleed; break-before: page; break-after: page; width: ${pageWidth}in; height: ${pageHeight}in; overflow: hidden; margin: 0; }
+.figure-bleed img.figure, .figure-spread img.figure { display: block; height: 100%; max-width: none; max-height: none; margin: 0; object-fit: cover; }
+.figure-bleed img.figure { width: 100%; }
+.figure-spread img.figure { width: 200%; }
+.figure-spread-left { break-before: left; }
+.figure-spread-right img.figure { margin-left: -100%; }
+${notePlacement(book) === 'page' ? FOOTNOTE_CSS : ''}
 ${book.style.largePrint ? LARGE_PRINT_CSS : ''}
 ${languageCss(lang)}
 `;

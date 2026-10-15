@@ -36,6 +36,8 @@ export interface BookStrings {
   paperback: string;
   prologue: string;
   epilogue: string;
+  /** Heading for endnotes. */
+  notes: string;
 }
 
 export interface Language {
@@ -54,12 +56,20 @@ const S = (
   chapter: string, part: string, contents: string, titlePage: string, copyright: string, dedication: string,
   epigraph: string, acknowledgments: string, aboutAuthor: string, alsoBy: string, cover: string,
   beginReading: string, allRightsReserved: string, ebook: string, paperback: string, prologue: string, epilogue: string,
-): BookStrings => ({
+): Omit<BookStrings, 'notes'> => ({
   chapter, part, contents, titlePage, copyright, dedication, epigraph, acknowledgments, aboutAuthor, alsoBy,
   cover, beginReading, allRightsReserved, ebook, paperback, prologue, epilogue,
 });
 
-type Entry = [code: string, name: string, native: string, script: ScriptGroup, strings: BookStrings];
+type Entry = [code: string, name: string, native: string, script: ScriptGroup, strings: Omit<BookStrings, 'notes'>];
+
+/** The heading for endnotes in each language. */
+const NOTES: Record<string, string> = {
+  en: 'Notes', es: 'Notas', fr: 'Notes', de: 'Anmerkungen', it: 'Note', pt: 'Notas', nl: 'Noten', sv: 'Noter', da: 'Noter',
+  nb: 'Noter', fi: 'Viitteet', pl: 'Przypisy', cs: 'Poznámky', ro: 'Note', hu: 'Jegyzetek', tr: 'Notlar', vi: 'Chú thích',
+  id: 'Catatan', ru: 'Примечания', uk: 'Примітки', el: 'Σημειώσεις', ar: 'الحواشي', fa: 'یادداشت‌ها', he: 'הערות',
+  hi: 'टिप्पणियाँ', th: 'เชิงอรรถ', 'zh-Hans': '注释', 'zh-Hant': '註釋', ja: '注', ko: '주',
+};
 
 const ENTRIES: Entry[] = [
   ['en', 'English', 'English', 'latin', S('Chapter {n}', 'Part {n}', 'Contents', 'Title Page', 'Copyright', 'Dedication', 'Epigraph', 'Acknowledgments', 'About the Author', 'Also By', 'Cover', 'Begin Reading', 'All rights reserved.', 'ebook', 'paperback', 'Prologue', 'Epilogue')],
@@ -106,7 +116,7 @@ export const LANGUAGES: Language[] = ENTRIES.map(([code, name, native, script, s
   native,
   script,
   dir: script === 'arabic' || script === 'hebrew' ? 'rtl' : 'ltr',
-  strings,
+  strings: { ...strings, notes: NOTES[code] ?? 'Notes' },
 }));
 
 const BY_CODE = new Map(LANGUAGES.map((l) => [l.code.toLowerCase(), l]));

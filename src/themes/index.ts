@@ -236,5 +236,41 @@ export function baseCss(theme: Theme, lang = 'en'): string {
 .toc-part { margin-top: 1em !important; font-weight: 600; }
 .toc-label + .toc-title::before { content: ": "; }
 :lang(zh) .toc-label + .toc-title::before, :lang(ja) .toc-label + .toc-title::before, :lang(ko) .toc-label + .toc-title::before { content: "\\3000"; }
+.el ul, .el ol { margin: 0.7em 0; padding-inline-start: 1.6em; }
+.el li { margin: 0.2em 0; }
+.el li p, .el td p, .el th p, .el .callout p, .el .message, .el .store-link, .el figcaption { text-indent: 0; }
+.el li p + p { margin-top: 0.35em; }
+.el .verse { margin: 1em 0 1em 1.6em; }
+.el .verse .stanza { margin: 0 0 0.9em; text-indent: 0; text-align: start; }
+.el .verse .line { display: block; padding-inline-start: 2em; text-indent: -2em; }
+.el .callout { margin: 1.2em 0; padding: 0.5em 0 0.5em 0.9em; border-inline-start: 2px solid currentColor; }
+.el .callout-tip { border-inline-start-style: dashed; }
+.el .callout-warning { border-inline-start-width: 4px; }
+.el .callout p { margin: 0 0 0.45em; text-align: start; }
+.el .callout p:last-child { margin-bottom: 0; }
+.el .table { width: 100%; margin: 1em 0; border-collapse: collapse; font-size: 0.9em; }
+.el .table th, .el .table td { padding: 0.3em 0.5em; border: 1px solid currentColor; vertical-align: top; text-align: start; }
+.el .table p { margin: 0; text-align: start; }
+.el .messages { margin: 1.1em 0; }
+.el .message { margin: 0 25% 0.45em 0; padding: 0.4em 0.75em; border: 1px solid currentColor; border-radius: 0.9em; text-align: start; }
+.el .message-sent { margin: 0 0 0.45em 25%; text-align: end; }
+.el .message .sender { display: block; font-size: 0.72em; font-weight: 700; letter-spacing: 0.04em; }
+.el .store-link { margin: 1em 0; text-align: center; }
+.el .store-link a { font-weight: 700; }
+.el .store-url { display: block; font-size: 0.85em; }
+.el .figure-block { margin: 1em 0; text-align: center; }
+.el figcaption { margin-top: 0.4em; font-size: 0.85em; font-style: italic; text-align: center; }
+.heading-image { margin: 0 0 1.2em; text-align: center; text-indent: 0; }
+.heading-image img { max-width: 100%; height: auto; }
+sup { line-height: 0; }
+.noteref { text-decoration: none; color: inherit; }
+.chapter-notes, .book-notes .body { font-size: 0.86em; }
+.chapter-notes { margin-top: 2em; }
+.notes-heading, .notes-group { margin: 1.6em 0 0.6em; font-size: 1em; font-weight: 600; text-align: start; }
+.notes-list { margin: 0; padding-inline-start: 1.8em; }
+.notes-list li { margin: 0 0 0.35em; }
+aside.footnote { margin-top: 1em; font-size: 0.85em; }
+aside.footnote p { text-indent: 0; }
+.note-back { text-decoration: none; color: inherit; }
 `;
 }
