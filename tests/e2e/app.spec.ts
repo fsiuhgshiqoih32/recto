@@ -182,8 +182,9 @@ test('switches app themes, remembers the choice and follows the system setting',
 
   await page.getByRole('button', { name: /^Appearance/ }).click();
   await page.getByRole('menuitemradio', { name: /Midnight/ }).click();
-  expect(await theme()).toBe('midnight');
-  expect(await background()).not.toBe(light);
+  // The switch runs inside a view transition, so it lands a frame or two after the click.
+  await expect.poll(theme).toBe('midnight');
+  await expect.poll(background).not.toBe(light);
 
   // Applied before first paint on reload, not just after React mounts.
   await page.reload();
@@ -192,7 +193,7 @@ test('switches app themes, remembers the choice and follows the system setting',
   await expect(page.getByRole('menuitemradio', { name: /Midnight/ })).toHaveAttribute('aria-checked', 'true');
 
   await page.getByRole('menuitemradio', { name: /System/ }).click();
-  expect(await theme()).toBe('paper');
+  await expect.poll(theme).toBe('paper');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect.poll(theme).toBe('ink');
 });

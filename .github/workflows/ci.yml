@@ -58,8 +58,14 @@ jobs:
         run: |
           # Ace drives Chrome, whose sandbox Ubuntu 24.04 blocks by default.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          npx --yes @daisy/ace@1.4.6 --version
-          for book in out/epub-*.epub; do npx --yes @daisy/ace@1.4.6 --exiterror2 --silent --subdir -o out/ace "$book"; done
+          npm install --global @daisy/ace@1.4.6
+          for book in out/epub-*.epub; do
+            # Exit 2 means accessibility violations; anything else, Ace itself failed. Either way, say why.
+            if ! ace --force --exiterror2 --subdir --outdir out/ace "$book" > ace.log 2>&1; then
+              echo "::error title=DAISY Ace failed on $book::$(tail -c 1500 ace.log | tr '\n' ' ')"
+              exit 1
+            fi
+          done
       - name: Keep the EPUBs and accessibility reports
         if: always()
         uses: actions/upload-artifact@v4
