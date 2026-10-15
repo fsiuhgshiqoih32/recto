@@ -28,6 +28,15 @@ export async function exportEpub(book: Book): Promise<number> {
   return bytes.length;
 }
 
+/** Builds one EPUB per store into a zip and downloads it; resolves to the number of editions. */
+export async function exportStoreEditions(book: Book): Promise<number> {
+  const { STORE_EDITIONS, buildStoreEditions } = await import('../export/epub/package');
+  const base = fileNameFor(book, 'epub').replace(/\.epub$/, '');
+  const bytes = await buildStoreEditions(book, base, { loadFont });
+  downloadBlob(new Blob([bytes as BlobPart], { type: 'application/zip' }), `${base}-store-editions.zip`);
+  return STORE_EDITIONS.length;
+}
+
 /**
  * Builds the EPUB and validates it with epubcheck-ts, a port of the EPUBCheck
  * that stores run on upload. Its verdict is advisory; CI runs the official one.

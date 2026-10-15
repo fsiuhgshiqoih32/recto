@@ -193,6 +193,16 @@ export function editionOf(book: Book, edition: Edition): Book {
   return elements.length === book.elements.length ? book : { ...book, elements };
 }
 
+/** Whether any element's content holds a node of this type (notes, store links…). */
+export function hasNode(book: Book, type: string): boolean {
+  const walk = (nodes: unknown[] | undefined): boolean =>
+    (nodes ?? []).some((node) => {
+      const n = node as { type: string; content?: unknown[] };
+      return n.type === type || walk(n.content);
+    });
+  return book.elements.some((el) => walk(el.content.content));
+}
+
 export function emptyDoc(): Doc {
   return { type: 'doc', content: [{ type: 'paragraph' }] };
 }

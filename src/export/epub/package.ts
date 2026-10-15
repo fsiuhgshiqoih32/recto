@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { Book, BookElement } from '../../model/book';
+import type { Book, BookElement, Store } from '../../model/book';
 import { editionOf } from '../../model/book';
 import { decodeDataUrl } from '../../model/dataUrl';
 
@@ -19,6 +19,8 @@ export interface EpubOptions {
   loadFont?: (file: string) => Promise<Uint8Array>;
   /** Fixed timestamp for reproducible builds and tests. */
   modified?: Date;
+  /** The store this edition is for: store-link blocks point at its page. */
+  store?: Store;
 }
 
 const CONTAINER_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -100,6 +102,7 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
     hrefFor: (el) => fileNames.get(el.id) ?? '',
     ornament: () => `<img src="../${ornamentPath}" alt=""/>`,
     imageSrc,
+    store: options.store,
   });
 
   // Cover.
@@ -204,4 +207,25 @@ export async function buildEpub(book: Book, options: EpubOptions = {}): Promise<
     compression: 'DEFLATE',
     compressionOptions: { level: 9 },
   });
+}
+
+export const STORE_EDITIONS: { store: Store; name: string; file: string }[] = [
+  { store: 'amazon', name: 'Amazon Kindle', file: 'kindle' },
+  { store: 'apple', name: 'Apple Books', file: 'apple' },
+  { store: 'kobo', name: 'Kobo', file: 'kobo' },
+  { store: 'google', name: 'Google Play Books', file: 'google' },
+  { store: 'nook', name: 'Barnes & Noble', file: 'nook' },
+  { store: 'universal', name: 'Other stores and aggregators', file: 'universal' },
+];
+
+/**
+ * One EPUB per store, each linking only to its own store (some stores reject
+ * ebooks that link to a competitor), zipped together for download.
+ */
+export async function buildStoreEditions(book: Book, baseName: string, options: EpubOptions = {}): Promise<Uint8Array> {
+  const zip = new JSZip();
+  for (const edition of STORE_EDITIONS) {
+    zip.file(`${baseName}-${edition.file}.epub`, await buildEpub(book, { ...options, store: edition.store }), { compression: 'STORE' });
+  }
+  return zip.generateAsync({ type: 'uint8array', mimeType: 'application/zip' });
 }

@@ -7,6 +7,7 @@ import { bookStrings, isBicameral, languageInfo } from '../i18n/languages';
 import type { BlockNode, Book, BookElement, ElementKind, InlineNode, ListItemNode, Mark, Store, TableRowNode } from '../model/book';
 import type { Theme } from '../themes';
 import { THEMES } from '../themes';
+import { hasNode } from '../model/book';
 import type { OrnamentId } from '../themes/ornaments';
 
 export type Target = 'epub' | 'print' | 'preview';
@@ -113,12 +114,7 @@ export function notePlacement(book: Book): NotePlacement {
 
 /** Whether any element carries a note (decides whether print adds a Notes section). */
 export function hasNotes(book: Book): boolean {
-  const walk = (nodes: unknown[] | undefined): boolean =>
-    (nodes ?? []).some((node) => {
-      const n = node as { type: string; content?: unknown[] };
-      return n.type === 'note' || walk(n.content);
-    });
-  return book.elements.some((el) => walk(el.content.content));
+  return hasNode(book, 'note');
 }
 
 const NOTES_ID = 'notes';

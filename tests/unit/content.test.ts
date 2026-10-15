@@ -173,3 +173,22 @@ describe('editor schema', () => {
     expect(doc.content[4]).toMatchObject({ attrs: { side: 'sent', sender: 'Ada' } });
   });
 });
+
+describe('store editions', () => {
+  it('builds one EPUB per store, each linking to its own store', async () => {
+    const JSZip = (await import('jszip')).default;
+    const { buildStoreEditions } = await import('../../src/export/epub/package');
+    const book = withContent([{ type: 'storeLinks', attrs: { label: 'Book two', links: { amazon: 'https://amazon.com/b2', universal: 'https://books2read.com/b2' } } }]);
+    const zip = await JSZip.loadAsync(await buildStoreEditions(book, 'harrow', { modified: new Date(0) }));
+    const names = Object.keys(zip.files).sort();
+    expect(names).toEqual(['harrow-apple.epub', 'harrow-google.epub', 'harrow-kindle.epub', 'harrow-kobo.epub', 'harrow-nook.epub', 'harrow-universal.epub']);
+    const chapterOf = async (name: string) => {
+      const epub = await JSZip.loadAsync(await zip.file(name)!.async('uint8array'));
+      const files = await Promise.all(Object.keys(epub.files).filter((p) => p.endsWith('.xhtml')).map((p) => epub.file(p)!.async('string')));
+      return files.join('\n');
+    };
+    expect(await chapterOf('harrow-kindle.epub')).toContain('href="https://amazon.com/b2"');
+    expect(await chapterOf('harrow-kobo.epub')).toContain('href="https://books2read.com/b2"');
+    expect(await chapterOf('harrow-kobo.epub')).not.toContain('amazon.com');
+  });
+});

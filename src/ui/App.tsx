@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { desktop } from '../desktop';
 import { languageInfo } from '../i18n/languages';
 import type { Book } from '../model/book';
-import { KIND_LABEL, wordCount } from '../model/book';
+import { KIND_LABEL, hasNode, wordCount } from '../model/book';
 import { newBook } from '../model/defaults';
 import { sampleBook } from '../model/sample';
 import { PreviewPanel, type Device } from '../preview/PreviewPanel';
@@ -13,8 +13,9 @@ import { applyTheme, resolveTheme, type UiThemeChoice, useAppearance } from './a
 import { AppearanceMenu } from './AppearanceMenu';
 import { DropdownMenu } from './DropdownMenu';
 import { ElementPane } from './ElementPane';
-import { exportEpub, printBook, savePdfDesktop, saveRectoFile } from './exporters';
+import { exportEpub, exportStoreEditions, printBook, savePdfDesktop, saveRectoFile } from './exporters';
 import { feeText, formatSize } from '../preflight/checks';
+
 import { BrandMark, Icon } from './icons';
 import { ImportDialog } from './ImportDialog';
 import { transition } from './motion';
@@ -32,6 +33,9 @@ type Drawer = 'contents' | 'settings' | 'preview' | null;
 type Notice = { kind: 'info' | 'success' | 'error' | 'busy'; message: string };
 const VIEWS = [{ id: 'format', label: 'Format' }, { id: 'edit', label: 'Edit' }] as const;
 const PANELS = [{ id: 'style', label: 'Style' }, { id: 'section', label: 'Section' }, { id: 'book', label: 'Book' }, { id: 'publish', label: 'Publish' }] as const;
+type ExportFormat = 'epub' | 'stores' | 'pdf';
+const EXPORT_PROGRESS: Record<ExportFormat, string> = { epub: 'Building EPUB…', stores: 'Building an EPUB for each store…', pdf: 'Laying out every page…' };
+const EXPORT_NAME: Record<ExportFormat, string> = { epub: 'EPUB', stores: 'Store edition', pdf: 'PDF' };
 function firstChapterId(book: Book): string | null { return (book.elements.find((el) => el.kind === 'chapter') ?? book.elements[0])?.id ?? null; }
 
 export function App({ initial }: { initial: Book }) {
@@ -81,15 +85,18 @@ export function App({ initial }: { initial: Book }) {
   const chooseAppearance = (choice: UiThemeChoice) => transition('theme', () => { applyTheme(resolveTheme(choice)); setAppearance(choice); });
   const togglePreview = () => transition('view', () => setShowPreview(!showPreview));
 
-  const runExport = async (format: 'epub' | 'pdf') => {
+  const runExport = async (format: ExportFormat) => {
     if (exportLock.current) return;
     exportLock.current = true;
     setExporting(true);
-    notify(format === 'epub' ? 'Building EPUB…' : 'Laying out every page…', 'busy');
+    notify(EXPORT_PROGRESS[format], 'busy');
     try {
       if (format === 'epub') {
         const bytes = await exportEpub(book);
         notify(`EPUB downloaded (${formatSize(bytes)}; KDP delivery costs ${feeText(bytes)} a sale).`, 'success');
+      } else if (format === 'stores') {
+        const count = await exportStoreEditions(book);
+        notify(`Downloaded ${count} store editions in one zip. Upload each store’s EPUB to that store.`, 'success');
       }
       else if (desktop) {
         const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. Choose where to save the PDF…`, 'busy'));
@@ -98,7 +105,7 @@ export function App({ initial }: { initial: Book }) {
         await printBook(book, (pages) => notify(`Laid out ${pages} pages. Opening the print dialog…`, 'busy'));
         notify('Print dialog opened. Choose “Save as PDF” to save your book.', 'success');
       }
-    } catch (error) { notify(`${format === 'epub' ? 'EPUB export' : 'PDF export'} failed: ${error instanceof Error ? error.message : error}`, 'error'); }
+    } catch (error) { notify(`${EXPORT_NAME[format]} export failed: ${error instanceof Error ? error.message : error}`, 'error'); }
     finally { exportLock.current = false; setExporting(false); }
   };
   const openText = (name: string, text: string) => {
@@ -169,6 +176,7 @@ export function App({ initial }: { initial: Book }) {
             {(close) => <>
               <div className="menu-label">Export your book</div>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('epub'); }}><Icon name="book" /><span>Export EPUB<small>For e-readers and ebook stores</small></span></button>
+              <button type="button" role="menuitem" onClick={() => { close(); void runExport('stores'); }}><Icon name="storeLink" /><span>EPUB for each store<small>{hasNode(book, 'storeLinks') ? 'Each links only to its own store, in one zip' : 'Same as one EPUB until the book has store links'}</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdf'); }}><Icon name="printer" /><span>{desktop ? 'Export PDF' : 'Print PDF'}<small>{desktop ? 'Save a print-ready PDF' : 'Print or save as PDF'}</small></span></button>
             </>}
           </DropdownMenu>
