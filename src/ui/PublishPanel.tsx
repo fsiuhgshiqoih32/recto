@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Book, BookMeta } from '../model/book';
 import { EXEMPTIONS, accessibilityFacts, accessibilityMetadata, storeAnswers } from '../export/epub/accessibility';
 import { AREA_LABEL, type Area, type Finding, SEVERITY_RANK, type Severity, checkBook, checkEpub, checkLayout } from '../preflight/checks';
+import { estimatePages } from '../export/print/pageCss';
+import { PAPER_LABEL, type Paper, coverWrap } from '../export/cover/wrap';
+import { downloadStoreCover, downloadTemplate, edgeColor, printCover } from './covers';
 import { measurePrintLayout, validateEpub } from './exporters';
 import { Icon, type IconName } from './icons';
 import type { BookActions } from './useBook';
@@ -14,6 +17,8 @@ interface FullCheck {
   findings: Finding[];
   /** The book revision the check ran against. */
   updatedAt: number;
+  /** Pages in the laid-out print edition. */
+  pages: number;
 }
 
 export function PublishPanel({ book, actions, onOpen }: { book: Book; actions: BookActions; onOpen: (elementId: string) => void }) {
@@ -29,7 +34,7 @@ export function PublishPanel({ book, actions, onOpen }: { book: Book; actions: B
       const layout = await measurePrintLayout(book);
       setProgress('Building and validating the EPUB…');
       const epub = await validateEpub(book);
-      setFull({ findings: [...checkLayout(book, layout), ...checkEpub(epub.messages, epub.bytes)], updatedAt: book.updatedAt });
+      setFull({ findings: [...checkLayout(book, layout), ...checkEpub(epub.messages, epub.bytes)], updatedAt: book.updatedAt, pages: layout.pages });
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     } finally {
@@ -86,8 +91,91 @@ export function PublishPanel({ book, actions, onOpen }: { book: Book; actions: B
         );
       })}
 
+      <CoverSection book={book} actions={actions} pages={full?.pages} />
       <AccessibilitySection book={book} actions={actions} />
     </div>
+  );
+}
+
+function CoverSection({ book, actions, pages: measured }: { book: Book; actions: BookActions; pages?: number }) {
+  const pages = measured ?? estimatePages(book);
+  const paper: Paper = book.style.paper ?? 'white';
+  const wrap = useMemo(() => coverWrap(book, pages, paper), [book, pages, paper]);
+  const [fromArt, setFromArt] = useState('#2b2b2b');
+  const [background, setBackground] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<{ text: string; error?: boolean }>();
+  const cover = book.meta.cover;
+
+  useEffect(() => {
+    let current = true;
+    if (cover) void edgeColor(cover).then((color) => current && setFromArt(color), () => undefined);
+    return () => {
+      current = false;
+    };
+  }, [cover]);
+
+  const act = async (label: string, work: () => Promise<string | null | void>) => {
+    setBusy(label);
+    setNote(undefined);
+    try {
+      const done = await work();
+      if (done) setNote({ text: done });
+    } catch (error) {
+      setNote({ text: error instanceof Error ? error.message : String(error), error: true });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <>
+      <h3 className="panel-heading">Covers</h3>
+      <div className="cover-tool">
+        <span className="field-label">Ebook cover for stores</span>
+        <span className="field-hint">{cover ? 'Stores take the cover as a separate JPEG. Recto saves one no taller than 2560 px, which is KDP’s ideal.' : 'Add a cover image in the Book tab first.'}</span>
+        <button type="button" className="btn" disabled={!cover || !!busy} onClick={() => void act('jpeg', async () => {
+          const { width, height } = await downloadStoreCover(book);
+          return `Saved a ${width} × ${height} px JPEG.`;
+        })}><Icon name="download" />Download JPEG</button>
+      </div>
+      <div className="cover-tool">
+        <span className="field-label">Paperback cover</span>
+        <dl className="cover-facts">
+          <div><dt>Full cover, with bleed</dt><dd>{wrap.width} × {wrap.height} in</dd></div>
+          <div><dt>Spine</dt><dd>{wrap.spine} in</dd></div>
+          <div><dt>Spine text</dt><dd>{wrap.spineText ? 'Allowed' : 'Not below 80 pages'}</dd></div>
+        </dl>
+        <span className="field-hint">{measured ? `For the ${pages} laid-out pages.` : `For about ${pages} pages. Check the whole book above for the exact spine width.`}</span>
+        <label className="field cover-paper">
+          <span className="field-label">Paper</span>
+          <select value={paper} onChange={(e) => actions.updateStyle({ paper: e.target.value as Paper })}>
+            {(Object.keys(PAPER_LABEL) as Paper[]).map((p) => <option key={p} value={p}>{PAPER_LABEL[p]}</option>)}
+          </select>
+        </label>
+        <div className="cover-actions-row">
+          <button type="button" className="btn" disabled={!!busy} onClick={() => { downloadTemplate(book, wrap); setNote({ text: 'Saved the template. Design over it at its full size, then hide the guide layer.' }); }}>
+            <Icon name="download" />Template (SVG)
+          </button>
+        </div>
+        <label className="field cover-background">
+          <span className="field-label">Spine and back color</span>
+          <span className="cover-color">
+            <input type="color" value={background ?? fromArt} onChange={(e) => setBackground(e.target.value)} aria-label="Spine and back color" />
+            {background && <button type="button" className="btn btn-quiet" onClick={() => setBackground(null)}>Match the cover</button>}
+          </span>
+          <span className="field-hint">The front shows your ebook cover; the back shows the description from the Book tab, with the barcode area left clear.</span>
+        </label>
+        <button type="button" className="btn" disabled={!!busy} onClick={() => void act('pdf', async () => {
+          const result = await printCover(book, wrap, background ?? fromArt);
+          if (result === 'canceled') return 'Cover export canceled.';
+          return result === 'printed' ? 'Print dialog opened: choose “Save as PDF”.' : `Saved ${result.path}`;
+        })}>
+          {busy === 'pdf' ? <span className="activity-spinner" aria-hidden="true" /> : <Icon name="printer" />}Make a paperback cover (PDF)
+        </button>
+      </div>
+      {note && <p className={`field-hint${note.error ? ' field-error' : ''}`} role={note.error ? 'alert' : 'status'}>{note.text}</p>}
+    </>
   );
 }
 

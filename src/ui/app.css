@@ -949,6 +949,15 @@ html[data-vt='theme']::view-transition-new(root) { animation: vt-reveal 520ms va
 .finding-title { font-size: 13px; font-weight: 520; overflow-wrap: anywhere; }
 .finding-detail { font-size: 12px; line-height: 1.45; color: var(--ink-2); overflow-wrap: anywhere; }
 .finding-open { height: 26px; padding: 0 8px; font-size: 12px; }
+.cover-tool { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 18px; }
+.cover-tool .field { width: 100%; margin: 4px 0 0; }
+.cover-facts { width: 100%; margin: 2px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.cover-facts > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; font-size: 12px; }
+.cover-facts dt { color: var(--ink-2); }
+.cover-facts dd { margin: 0; font-weight: 560; font-variant-numeric: tabular-nums; }
+.cover-actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.cover-color { display: flex; align-items: center; gap: 8px; }
+.cover-color input[type='color'] { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--field-line); border-radius: var(--radius-sm); background: var(--field-bg); cursor: pointer; }
 .store-answers { margin-top: 14px; padding: 12px; border-radius: var(--radius-md); background: var(--surface-2); }
 .store-answers-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .store-answers dl { margin: 10px 0 0; display: flex; flex-direction: column; gap: 7px; }

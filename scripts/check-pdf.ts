@@ -10,7 +10,8 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 import { OPS, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { renderPdf } from '../cli/pdf';
+import { renderCoverPdf, renderPdf } from '../cli/pdf';
+import { coverWrap } from '../src/export/cover/wrap';
 import type { ThemeId, TrimId } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
 import { TRIMS } from '../src/export/print/pageCss';
@@ -258,6 +259,25 @@ const combos: [TrimId, ThemeId][] = process.argv.includes('--all')
   : [['5.5x8.5', 'octavo'], ['6x9', 'broadsheet']];
 for (const [trim, theme] of combos) await checkBook(trim, theme);
 for (const sample of LANGUAGE_SAMPLES) await checkLanguage(sample);
+
+// A paperback wrap cover: one page at the exact wrap size, with the spine and back text.
+{
+  const book = sampleBook();
+  book.style.trim = '6x9';
+  book.meta.cover = `data:image/png;base64,${readFileSync('build/icon.png').toString('base64')}`;
+  book.meta.description = 'A lighthouse keeper inherits a ledger nobody has read in ninety years.';
+  const wrap = coverWrap(book, 300, 'white');
+  const path = join('out', 'cover-6x9-300.pdf');
+  await renderCoverPdf(book, wrap, '#1d3a4a', path);
+  const [page, ...rest] = await readPdf(path);
+  console.log(`
+cover: ${wrap.width} × ${wrap.height} in → ${path}`);
+  check(!rest.length, 'the cover is a single page');
+  check(Math.abs(page.width - wrap.width * 72) < 0.6 && Math.abs(page.height - wrap.height * 72) < 0.6, `the cover is ${wrap.width} × ${wrap.height} in (got ${(page.width / 72).toFixed(3)} × ${(page.height / 72).toFixed(3)})`);
+  const text = squash(page.items.map((it) => it.str).join(''));
+  check(text.includes(squash('A lighthouse keeper inherits a ledger')), 'the back cover carries the description');
+  check(text.includes(squash(book.meta.title)) && text.includes(squash(book.meta.author)), 'the spine and back carry the title and author');
+}
 
 if (failures.length) {
   console.error(`\n${failures.length} check(s) failed`);

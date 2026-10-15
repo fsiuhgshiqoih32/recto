@@ -15,6 +15,8 @@ import type { Book } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
 import { printDocument } from '../src/export/print/paged';
 import { layoutUntilSettled } from '../src/export/print/layout';
+import { coverDocument } from '../src/export/cover/document';
+import type { CoverWrap } from '../src/export/cover/wrap';
 import { loadHyphenator } from '../src/i18n/hyphenate';
 import { fileNameFor, parseBook } from '../src/store/file';
 import { packageOf } from '../src/themes/fonts';
@@ -50,7 +52,14 @@ export interface RenderOptions {
   inspect?: (page: Page) => Promise<void>;
 }
 
-export async function renderPdf(book: Book, outPath: string, options: RenderOptions = {}): Promise<{ pages: number; passes: number }> {
+const fontUrl = (file: string) => `${ORIGIN}/fonts/${file}`;
+
+/**
+ * Opens a page that serves fonts and paged.js from node_modules under a fake
+ * origin. `show(html)` loads a document there and waits until it reports its
+ * page count (window.__rectoPages), as Recto's print and cover documents do.
+ */
+async function withPrintPage<T>(use: (page: Page, show: (html: string) => Promise<number>) => Promise<T>): Promise<T> {
   const browser = await launch();
   try {
     const page = await browser.newPage();
@@ -63,27 +72,36 @@ export async function renderPdf(book: Book, outPath: string, options: RenderOpti
       if (!path) return route.fulfill({ status: 404 });
       return route.fulfill({ path });
     });
-
-    const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
-    const result = await layoutUntilSettled(book, async (pages) => {
-      html = printDocument(book, {
-        pages,
-        fontUrl: (file) => `${ORIGIN}/fonts/${file}`,
-        pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`,
-        hyphenate,
-      });
+    const show = async (next: string) => {
+      html = next;
       await page.goto(`${ORIGIN}/book.html`);
-      await page.waitForFunction(() => (window as unknown as { __rectoPages?: number }).__rectoPages, null, {
-        timeout: 180_000,
-      });
+      await page.waitForFunction(() => (window as unknown as { __rectoPages?: number }).__rectoPages, null, { timeout: 180_000 });
       return page.evaluate(() => (window as unknown as { __rectoPages: number }).__rectoPages);
-    });
-    await options.inspect?.(page);
-    writeFileSync(outPath, await page.pdf({ preferCSSPageSize: true, printBackground: true }));
-    return result;
+    };
+    return await use(page, show);
   } finally {
     await browser.close();
   }
+}
+
+export function renderPdf(book: Book, outPath: string, options: RenderOptions = {}): Promise<{ pages: number; passes: number }> {
+  return withPrintPage(async (page, show) => {
+    const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
+    const result = await layoutUntilSettled(book, (pages) =>
+      show(printDocument(book, { pages, fontUrl, pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`, hyphenate })),
+    );
+    await options.inspect?.(page);
+    writeFileSync(outPath, await page.pdf({ preferCSSPageSize: true, printBackground: true }));
+    return result;
+  });
+}
+
+/** Prints a paperback wrap cover (see export/cover) to PDF. */
+export function renderCoverPdf(book: Book, wrap: CoverWrap, background: string, outPath: string): Promise<void> {
+  return withPrintPage(async (page, show) => {
+    await show(coverDocument(book, wrap, { fontUrl, background }));
+    writeFileSync(outPath, await page.pdf({ preferCSSPageSize: true, printBackground: true }));
+  });
 }
 
 async function main() {

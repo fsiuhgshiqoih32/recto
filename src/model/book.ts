@@ -83,6 +83,8 @@ export interface BookStyle {
   startOnRecto: boolean;
   dropCaps: boolean;
   embedFonts: boolean;
+  /** Paper stock for the print edition; sets the spine width. Defaults to white. */
+  paper?: 'white' | 'cream' | 'color';
 }
 
 export interface Book {
