@@ -1,6 +1,8 @@
 // The Book model. Element content is stored as ProseMirror/TipTap JSON so the
 // editor, the importers and the renderer all share one document format.
 
+import type { Binding, TrimId } from '../export/print/trims';
+
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 
 export interface Mark {
@@ -52,7 +54,7 @@ export interface BookElement {
 }
 
 export type ThemeId = 'octavo' | 'ledger' | 'marginalia' | 'broadsheet' | 'almanac';
-export type TrimId = '5x8' | '5.25x8' | '5.5x8.5' | '6x9' | 'a5';
+export type { Binding, TrimId };
 
 export interface BookMeta {
   title: string;
@@ -83,6 +85,8 @@ export interface BookStyle {
   startOnRecto: boolean;
   dropCaps: boolean;
   embedFonts: boolean;
+  /** Paperback (default) or hardcover: sets the trims and page counts printers allow. */
+  binding?: Binding;
   /** Paper stock for the print edition; sets the spine width. Defaults to white. */
   paper?: 'white' | 'cream' | 'color';
 }

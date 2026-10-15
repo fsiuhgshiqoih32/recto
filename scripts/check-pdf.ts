@@ -14,7 +14,7 @@ import { renderCoverPdf, renderPdf } from '../cli/pdf';
 import { coverWrap } from '../src/export/cover/wrap';
 import type { ThemeId, TrimId } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
-import { TRIMS } from '../src/export/print/pageCss';
+import { TRIMS, pageMargins, trimLabel } from '../src/export/print/pageCss';
 import { languageInfo } from '../src/i18n/languages';
 import { paragraphs } from '../src/model/book';
 import { createElement, newBook } from '../src/model/defaults';
@@ -122,7 +122,7 @@ async function checkBook(trim: TrimId, theme: ThemeId) {
   const { pages: count } = await renderPdf(book, path, { inspect: async (page) => void (stranded = await strandedLines(page)) });
   const pages = await readPdf(path);
   const t = TRIMS[trim];
-  console.log(`\n${theme}, ${t.label}: ${count} pages → ${path}`);
+  console.log(`\n${theme}, ${trimLabel(t)}: ${count} pages → ${path}`);
 
   check(pages.length === count, `PDF has the ${count} pages paged.js laid out`);
   check(stranded.length === 0, `no widows or orphans${stranded.length ? ` (${stranded.join('; ')})` : ''}`);
@@ -137,8 +137,12 @@ async function checkBook(trim: TrimId, theme: ThemeId) {
   );
 
   const all = (p: PageInfo) => squash(p.items.map((it) => it.str).join(''));
-  const head = (p: PageInfo) => squash(p.items.filter((it) => it.y < 0.09).map((it) => it.str).join(''));
-  const foot = (p: PageInfo) => squash(p.items.filter((it) => it.y > 0.9).map((it) => it.str).join(''));
+  // Running heads and folios sit in the top and bottom margins.
+  const margins = pageMargins(t, count);
+  const inHead = (y: number) => y < margins.top / t.height;
+  const inFoot = (y: number) => y > 1 - margins.bottom / t.height;
+  const head = (p: PageInfo) => squash(p.items.filter((it) => inHead(it.y)).map((it) => it.str).join(''));
+  const foot = (p: PageInfo) => squash(p.items.filter((it) => inFoot(it.y)).map((it) => it.str).join(''));
 
   const tocIndex = pages.findIndex((p) => all(p).startsWith('CONTENTS'));
   check(tocIndex >= 0, `contents page found (page ${tocIndex + 1})`);
@@ -169,7 +173,7 @@ async function checkBook(trim: TrimId, theme: ThemeId) {
 
   // Running heads and folios are drawn once. Chrome 131+ can paint @page margin
   // boxes itself on top of paged.js's own, which would double them.
-  const doubled = pages.findIndex((p) => p.items.filter((it) => it.y > 0.9 && /^\d+$/.test(it.str.trim())).length > 1);
+  const doubled = pages.findIndex((p) => p.items.filter((it) => inFoot(it.y) && /^\d+$/.test(it.str.trim())).length > 1);
   check(doubled < 0, `every page has at most one folio${doubled >= 0 ? ` (page ${doubled + 1} has more)` : ''}`);
 
   // Contents entries end in the page number where that element opens.
@@ -255,7 +259,7 @@ async function checkLanguage({ lang, text, label, font, script }: (typeof LANGUA
 }
 
 const combos: [TrimId, ThemeId][] = process.argv.includes('--all')
-  ? [['5x8', 'octavo'], ['5.5x8.5', 'ledger'], ['6x9', 'marginalia'], ['a5', 'broadsheet'], ['5.25x8', 'almanac']]
+  ? [['5x8', 'octavo'], ['5.5x8.5', 'ledger'], ['6x9', 'marginalia'], ['a5', 'broadsheet'], ['5.25x8', 'almanac'], ['6.14x9.21', 'octavo'], ['8.5x11', 'ledger']]
   : [['5.5x8.5', 'octavo'], ['6x9', 'broadsheet']];
 for (const [trim, theme] of combos) await checkBook(trim, theme);
 for (const sample of LANGUAGE_SAMPLES) await checkLanguage(sample);

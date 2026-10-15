@@ -139,6 +139,12 @@ function CoverSection({ book, actions, pages: measured }: { book: Book; actions:
           return `Saved a ${width} × ${height} px JPEG.`;
         })}><Icon name="download" />Download JPEG</button>
       </div>
+      {book.style.binding === 'hardcover' ? (
+        <div className="cover-tool">
+          <span className="field-label">Hardcover cover</span>
+          <span className="field-hint">A case laminate cover wraps around the boards and needs hinge and wrap allowances that vary by page count. Download the exact template from KDP’s cover calculator for {pages} pages; the ebook cover above makes a good front.</span>
+        </div>
+      ) : (
       <div className="cover-tool">
         <span className="field-label">Paperback cover</span>
         <dl className="cover-facts">
@@ -174,6 +180,7 @@ function CoverSection({ book, actions, pages: measured }: { book: Book; actions:
           {busy === 'pdf' ? <span className="activity-spinner" aria-hidden="true" /> : <Icon name="printer" />}Make a paperback cover (PDF)
         </button>
       </div>
+      )}
       {note && <p className={`field-hint${note.error ? ' field-error' : ''}`} role={note.error ? 'alert' : 'status'}>{note.text}</p>}
     </>
   );

@@ -7,7 +7,7 @@ import { ORNAMENTS } from '../themes/ornaments';
 import { languageInfo } from '../i18n/languages';
 import { type Hyphenate, loadHyphenator } from '../i18n/hyphenate';
 import { type PagedMessage, printDocument } from '../export/print/paged';
-import { TRIMS, estimatePages, kdpMinInside } from '../export/print/pageCss';
+import { TRIMS, estimatePages, kdpMinInside, trimLabel } from '../export/print/pageCss';
 import { fontUrl, pagedUrl } from './assets';
 import { TabBar } from '../ui/TabBar';
 import { Icon } from '../ui/icons';
@@ -158,7 +158,7 @@ function PrintPreview({ book, element, active }: { book: Book; element: BookElem
       <div className="print-bar">
         <TabBar id="print-scope" label="Print preview scope" options={[{ id: 'element', label: 'This element' }, { id: 'book', label: 'Whole book' }]} value={scope} onChange={setScope} className="segmented segmented-small" />
         <span className="print-info" aria-live="polite">
-          {trim.label}
+          {trimLabel(trim)}
           {pages !== null && !busy && ` · ${pages} ${pages === 1 ? 'page' : 'pages'}`}
           {busy && ' · laying out…'}
         </span>

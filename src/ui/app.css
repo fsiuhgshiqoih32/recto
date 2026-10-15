@@ -929,6 +929,10 @@ html[data-vt='theme']::view-transition-new(root) { animation: vt-reveal 520ms va
   .print-bar { gap: 6px; }
 }
 
+.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.units-switch { position: relative; z-index: 0; }
+.units-switch button { height: 22px; padding: 0 8px; font-size: 11.5px; }
+
 /* ---------- Publish panel ---------- */
 :root { --warning: #8a5300; }
 :root[data-ui-theme='ink'], :root[data-ui-theme='midnight'], :root[data-ui-theme='evergreen'] { --warning: #e7b462; }

@@ -5,7 +5,7 @@
 // low on the back cover.
 
 import type { Book } from '../../model/book';
-import { TRIMS } from '../print/pageCss';
+import { TRIMS } from '../print/trims';
 
 export type Paper = 'white' | 'cream' | 'color';
 

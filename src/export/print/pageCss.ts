@@ -1,31 +1,16 @@
 // Print layout rules: trim sizes, KDP gutter minimums and the CSS Paged Media
 // stylesheet that paged.js turns into pages.
 
-import type { Book, TrimId } from '../../model/book';
+import type { Book } from '../../model/book';
 import { textStats } from '../../model/book';
 import { themeOf } from '../../render/html';
 import { languageInfo } from '../../i18n/languages';
 import { baseCss, languageCss } from '../../themes';
 import { bookFonts, fontFaceCss } from '../../themes/fonts';
 
-export interface Trim {
-  id: TrimId;
-  label: string;
-  /** Inches. */
-  width: number;
-  height: number;
-  /** Body size in points. */
-  fontSize: number;
-  outside: number;
-}
+import { TRIMS, type Trim, isLarge } from './trims';
 
-export const TRIMS: Record<TrimId, Trim> = {
-  '5x8': { id: '5x8', label: '5 × 8 in', width: 5, height: 8, fontSize: 10.5, outside: 0.55 },
-  '5.25x8': { id: '5.25x8', label: '5.25 × 8 in', width: 5.25, height: 8, fontSize: 10.5, outside: 0.55 },
-  '5.5x8.5': { id: '5.5x8.5', label: '5.5 × 8.5 in', width: 5.5, height: 8.5, fontSize: 11, outside: 0.6 },
-  '6x9': { id: '6x9', label: '6 × 9 in', width: 6, height: 9, fontSize: 11.5, outside: 0.65 },
-  a5: { id: 'a5', label: 'A5 · 148 × 210 mm', width: 5.83, height: 8.27, fontSize: 11, outside: 0.6 },
-};
+export { TRIMS, type Trim, trimLabel } from './trims';
 
 /** Minimum inside (gutter-side) margin KDP requires for a given page count, in inches. */
 export function kdpMinInside(pages: number): number {
@@ -44,7 +29,9 @@ export interface Margins {
 }
 
 export function pageMargins(trim: Trim, pages: number): Margins {
-  return { top: 0.75, bottom: 0.8, outside: trim.outside, inside: +(kdpMinInside(pages) + 0.3).toFixed(3) };
+  // Large trims get a little more room above and below the text block.
+  const extra = isLarge(trim) ? 0.1 : 0;
+  return { top: 0.75 + extra, bottom: 0.8 + extra, outside: trim.outside, inside: +(kdpMinInside(pages) + 0.3).toFixed(3) };
 }
 
 /** Rough page count before layout, used to pick the first gutter. */

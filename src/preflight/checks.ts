@@ -4,7 +4,8 @@
 
 import type { BlockNode, Book, BookElement } from '../model/book';
 import { GENERATED_KINDS, KIND_LABEL, docText } from '../model/book';
-import { TRIMS, pageMargins } from '../export/print/pageCss';
+import { TRIMS, pageMargins, trimLabel } from '../export/print/pageCss';
+import { pageRange, printersFor } from '../export/print/trims';
 import { imageInfo } from './images';
 import { isbn13, isbnProblem } from './isbn';
 
@@ -28,9 +29,6 @@ export const AREA_LABEL: Record<Area, string> = {
   accessibility: 'Image descriptions',
 };
 
-/** KDP paperback (black ink) page limits. */
-export const KDP_MIN_PAGES = 24;
-export const KDP_MAX_PAGES = 828;
 /** KDP's recommended image resolution, and the point below which prints look soft. */
 export const GOOD_PPI = 300;
 export const POOR_PPI = 200;
@@ -97,6 +95,18 @@ export function checkBook(book: Book): Finding[] {
   const ebookIsbn = isbn13(meta.isbnEbook);
   if (ebookIsbn && ebookIsbn === isbn13(meta.isbnPrint)) {
     findings.push({ area: 'details', severity: 'error', title: 'The ebook and paperback share an ISBN', detail: 'Each edition needs its own ISBN.' });
+  }
+
+  const binding = book.style.binding ?? 'paperback';
+  const trim = TRIMS[book.style.trim];
+  const printers = printersFor(trim, binding);
+  if (!printers.includes('KDP')) {
+    findings.push({
+      area: 'print',
+      severity: printers.length ? 'info' : 'error',
+      title: `KDP doesn't print ${trimLabel(trim)} ${binding}s`,
+      detail: printers.length ? `${printers.join(' and ')} does. For KDP, pick another trim size in the Style tab.` : 'Pick another trim size or binding in the Style tab.',
+    });
   }
 
   const block = textBlock(book);
@@ -175,12 +185,14 @@ export interface LayoutStats {
 export function checkLayout(book: Book, stats: LayoutStats): Finding[] {
   const findings: Finding[] = [];
   const trim = TRIMS[book.style.trim];
-  if (stats.pages < KDP_MIN_PAGES) {
-    findings.push({ area: 'print', severity: 'error', title: `${stats.pages} pages is too short for a paperback`, detail: `KDP's minimum is ${KDP_MIN_PAGES} pages. A larger body size or a smaller trim adds pages.` });
-  } else if (stats.pages > KDP_MAX_PAGES) {
-    findings.push({ area: 'print', severity: 'error', title: `${stats.pages} pages is too long for one paperback`, detail: `KDP's maximum is ${KDP_MAX_PAGES} pages. A larger trim size fits more on each page.` });
+  const binding = book.style.binding ?? 'paperback';
+  const range = pageRange(binding);
+  if (stats.pages < range.min) {
+    findings.push({ area: 'print', severity: 'error', title: `${stats.pages} pages is too short for a ${binding}`, detail: `${range.printer} needs at least ${range.min} pages. A larger body size or a smaller trim adds pages.` });
+  } else if (stats.pages > range.max) {
+    findings.push({ area: 'print', severity: 'error', title: `${stats.pages} pages is too long for one ${binding}`, detail: `${range.printer} takes at most ${range.max} pages. A larger trim size fits more on each page.` });
   } else {
-    findings.push({ area: 'print', severity: 'ok', title: `${stats.pages} pages at ${trim.label}`, detail: `Inside margin ${stats.inside} in, which meets KDP's minimum for this page count.` });
+    findings.push({ area: 'print', severity: 'ok', title: `${stats.pages} pages at ${trimLabel(trim)}`, detail: `Inside margin ${stats.inside} in, which meets KDP's minimum for this page count.` });
   }
   if (stats.pages % 2) findings.push({ area: 'print', severity: 'info', title: 'Odd page count', detail: 'Printers add a blank page at the end to make it even.' });
   for (const run of stats.blankRuns) {

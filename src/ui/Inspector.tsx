@@ -1,11 +1,13 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { chapterLabel } from '../i18n/labels';
 import { languageInfo } from '../i18n/languages';
 import { LanguagePicker } from './LanguagePicker';
-import type { Book, BookElement, BookMeta, TrimId } from '../model/book';
+import type { Binding, Book, BookElement, BookMeta, TrimId } from '../model/book';
 import { GENERATED_KINDS, KIND_LABEL, wordCount } from '../model/book';
 import { Icon } from './icons';
-import { TRIMS, estimatePages, kdpMinInside } from '../export/print/pageCss';
+import { TRIMS, estimatePages, kdpMinInside, trimLabel } from '../export/print/pageCss';
+import { TRIM_GROUPS, type Units, pageRange, printersFor } from '../export/print/trims';
+import { usePreference } from './preferences';
 import { THEME_LIST } from '../themes';
 import { fontStack } from '../themes/fonts';
 import { ORNAMENTS } from '../themes/ornaments';
@@ -34,9 +36,30 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
   );
 }
 
+const UNITS = [{ id: 'in', label: 'in' }, { id: 'mm', label: 'mm' }] as const;
+
+/** The allowed trim closest in size to `id`, for when a binding doesn't offer it. */
+function nearestTrim(id: TrimId, allowed: TrimId[]): TrimId {
+  const area = (t: TrimId) => TRIMS[t].width * TRIMS[t].height;
+  return allowed.reduce((best, t) => (Math.abs(area(t) - area(id)) < Math.abs(area(best) - area(id)) ? t : best));
+}
+
 export function StylePanel({ book, actions }: { book: Book; actions: BookActions }) {
   const { style } = book;
   const pages = estimatePages(book);
+  const [units, setUnits] = usePreference<Units>('recto:units', 'in');
+  const binding: Binding = style.binding ?? 'paperback';
+  const trim = TRIMS[style.trim];
+  const range = pageRange(binding);
+  const printers = printersFor(trim, binding);
+  const trimHint =
+    `About ${pages} pages. ` +
+    (printers.length ? `${printers.join(' and ')} print${printers.length === 1 ? 's' : ''} this size` : `KDP doesn't offer this size as a ${binding}`) +
+    `; ${range.printer} takes ${range.min}–${range.max} pages. The inside margin grows with the page count (at least ${kdpMinInside(pages)} in here).`;
+  const changeBinding = (next: Binding) => {
+    const allowed = (Object.keys(TRIMS) as TrimId[]).filter((id) => (next === 'hardcover' ? TRIMS[id].printers.includes('kdp-hardcover') : TRIMS[id].printers.some((p) => p !== 'kdp-hardcover')));
+    actions.updateStyle({ binding: next, trim: allowed.includes(style.trim) ? style.trim : nearestTrim(style.trim, allowed) });
+  };
   const lang = book.meta.language;
   const { dir } = languageInfo(lang);
   const sampleTitle = book.elements.find((el) => el.kind === 'chapter' && el.numbered !== false && el.title.trim())?.title ?? 'The Inventory';
@@ -74,15 +97,35 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
       </div>
 
       <h3 className="panel-heading">Print</h3>
-      <Field label="Trim size" hint={`About ${pages} pages. KDP needs at least a ${kdpMinInside(pages)} in inside margin at that length; Recto adds it automatically.`}>
-        <select value={style.trim} onChange={(e) => actions.updateStyle({ trim: e.target.value as TrimId })}>
-          {Object.values(TRIMS).map((trim) => (
-            <option key={trim.id} value={trim.id}>
-              {trim.label}
-            </option>
-          ))}
+      <Field label="Binding">
+        <select value={binding} onChange={(e) => changeBinding(e.target.value as Binding)}>
+          <option value="paperback">Paperback</option>
+          <option value="hardcover">Hardcover (case laminate)</option>
         </select>
       </Field>
+      <div className="field">
+        <div className="field-label-row">
+          <label className="field-label" htmlFor="trim-size">Trim size</label>
+          <div className="segmented segmented-small units-switch" role="radiogroup" aria-label="Units"
+            style={{ '--tab-count': UNITS.length, '--tab-index': UNITS.findIndex((u) => u.id === units) } as CSSProperties}>
+            <span className="tab-indicator" aria-hidden="true" />
+            {UNITS.map((u) => (
+              <button key={u.id} type="button" role="radio" aria-checked={units === u.id} className={units === u.id ? 'is-active' : ''} onClick={() => setUnits(u.id)}>{u.label}</button>
+            ))}
+          </div>
+        </div>
+        <select id="trim-size" value={style.trim} onChange={(e) => actions.updateStyle({ trim: e.target.value as TrimId })}>
+          {TRIM_GROUPS.map((group) => {
+            const ids = group.ids.filter((id) => binding === 'paperback' ? !TRIMS[id].printers.every((p) => p === 'kdp-hardcover') : TRIMS[id].printers.includes('kdp-hardcover'));
+            return ids.length ? (
+              <optgroup key={group.label} label={group.label}>
+                {ids.map((id) => <option key={id} value={id}>{trimLabel(TRIMS[id], units)}</option>)}
+              </optgroup>
+            ) : null;
+          })}
+        </select>
+        <span className="field-hint">{trimHint}</span>
+      </div>
       <Field label="Right-hand running head">
         <select value={style.rectoHeader} onChange={(e) => actions.updateStyle({ rectoHeader: e.target.value as 'title' | 'chapter' })}>
           <option value="title">Book title</option>
