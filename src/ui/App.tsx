@@ -109,7 +109,11 @@ export function App({ initial }: { initial: Book }) {
     const name = languageInfo(book.meta.language).name;
     if (!desktop) { setSpellcheckNote('Spellcheck uses your browser’s languages'); return; }
     desktop.setSpellcheckLanguages([book.meta.language])
-      .then(({ applied }) => current && setSpellcheckNote(applied.length ? `Spellchecking in ${name} (${applied.join(', ')})` : `No ${name} spelling dictionary is available`))
+      .then(({ applied }) => current && setSpellcheckNote(
+        // macOS spellchecks with the system's dictionaries, which detect the language themselves.
+        applied[0] === 'system' ? 'Spellchecking with macOS’s dictionaries'
+          : applied.length ? `Spellchecking in ${name} (${applied.join(', ')})` : `No ${name} spelling dictionary is available`,
+      ))
       .catch(() => current && setSpellcheckNote(undefined));
     return () => { current = false; };
   }, [book.meta.language]);

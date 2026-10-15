@@ -39,16 +39,21 @@ test('runs the app from its private origin and saves the library', async () => {
   await expect(window.locator('.print-info')).toHaveText(/· \d+ pages?$/, { timeout: 30_000 });
 });
 
+// macOS always spellchecks with the system's own dictionaries, which pick the language themselves.
+const mac = process.platform === 'darwin';
+
 test('spellchecks in the book’s language', async () => {
   await launch();
   const languages = () => app.evaluate(({ session }) => session.defaultSession.getSpellCheckerLanguages());
   await window.getByRole('tab', { name: 'Book' }).click();
-  await expect(window.getByText(/Spellchecking in English/)).toBeVisible();
-  expect((await languages()).some((l) => l.startsWith('en'))).toBe(true);
+  await expect(window.getByText(mac ? /Spellchecking with macOS/ : /Spellchecking in English/)).toBeVisible();
+  if (!mac) expect((await languages()).some((l) => l.startsWith('en'))).toBe(true);
 
   await window.locator('.inspector').getByLabel('Language', { exact: true }).selectOption('es');
-  await expect(window.getByText(/Spellchecking in Spanish/)).toBeVisible();
-  expect((await languages()).some((l) => l.startsWith('es'))).toBe(true);
+  if (!mac) {
+    await expect(window.getByText(/Spellchecking in Spanish/)).toBeVisible();
+    expect((await languages()).some((l) => l.startsWith('es'))).toBe(true);
+  }
   // The editor carries the language so the spellchecker and right-to-left layout follow it.
   await expect(window.locator('.editor-page')).toHaveAttribute('lang', 'es');
   await expect(window.locator('.editor-page')).toHaveAttribute('spellcheck', 'true');
@@ -59,6 +64,7 @@ test('spellchecks in the book’s language', async () => {
   await expect(window.locator('.nav-primary', { hasText: 'Índice' })).toBeVisible();
   if (compactNavigation) await window.getByRole('button', { name: 'Close contents' }).click();
 
+  if (mac) return;
   // No Arabic dictionary: spellchecking switches off instead of leaving Spanish running.
   const enabled = () => app.evaluate(({ session }) => session.defaultSession.isSpellCheckerEnabled());
   await window.locator('.inspector').getByLabel('Language', { exact: true }).selectOption('ar');

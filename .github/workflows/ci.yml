@@ -35,7 +35,17 @@ jobs:
           if-no-files-found: ignore
 
   desktop:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            app: release/win-unpacked/Recto.exe
+          - os: macos-latest
+            app: release/mac-arm64/Recto.app/Contents/MacOS/Recto
+          - os: ubuntu-latest
+            app: release/linux-unpacked/recto
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,11 +53,30 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox uses.
+      - name: Allow Chromium's sandbox (Linux)
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Desktop app tests (Electron)
-        run: npm run test:desktop
-      - name: Build the installer
-        run: npx electron-builder --win --publish never
-      - name: Test the packaged app
-        run: npx playwright test --config playwright.desktop.config.ts
+        run: ${{ runner.os == 'Linux' && 'xvfb-run --auto-servernum ' || '' }}npm run test:desktop
+      - name: Build the installers
+        run: npx electron-builder --publish never
         env:
-          RECTO_APP: ${{ github.workspace }}\release\win-unpacked\Recto.exe
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Test the packaged app
+        run: ${{ runner.os == 'Linux' && 'xvfb-run --auto-servernum ' || '' }}npx playwright test --config playwright.desktop.config.ts
+        env:
+          RECTO_APP: ${{ github.workspace }}/${{ matrix.app }}
+      - name: Keep the installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*-mac-*.zip
+            release/*.AppImage
+            release/*.deb
+            release/*.tar.gz
