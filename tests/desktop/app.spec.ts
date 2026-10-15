@@ -91,6 +91,23 @@ test('exports a print-ready PDF straight to a file', async () => {
   expect([Math.round(width), Math.round(height)]).toEqual([396, 612]);
 });
 
+test('exports a PDF for reading with bookmarks and live links', async () => {
+  await launch();
+  const out = join(profile, 'book-reading.pdf');
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showSaveDialog = (async () => ({ canceled: false, filePath: path })) as typeof dialog.showSaveDialog;
+  }, out);
+  await window.getByRole('button', { name: 'Export', exact: true }).click();
+  await window.getByRole('menuitem', { name: /^PDF for reading/ }).click();
+  await expect(window.locator('.status')).toContainText('Saved', { timeout: 60_000 });
+
+  const pdf = await getDocument({ data: new Uint8Array(readFileSync(out)) }).promise;
+  expect((await pdf.getOutline())?.length).toBeGreaterThan(5);
+  let links = 0;
+  for (let i = 1; i <= Math.min(pdf.numPages, 8); i++) links += (await (await pdf.getPage(i)).getAnnotations()).filter((a: { subtype: string }) => a.subtype === 'Link').length;
+  expect(links).toBeGreaterThan(5);
+});
+
 test('lays out a right-to-left book', async () => {
   await launch();
   const out = join(profile, 'arabic.pdf');

@@ -245,7 +245,7 @@ function registerIpc(): void {
     return { pages };
   });
 
-  ipcMain.handle('pdf:save', async (_event, fileName: string, finish?: PdfFinish) => {
+  ipcMain.handle('pdf:save', async (_event, fileName: string, finish?: PdfFinish, options?: { outline?: boolean; tagged?: boolean }) => {
     if (!printWindow || printWindow.isDestroyed()) throw new Error('Nothing has been laid out yet.');
     const choice = await dialog.showSaveDialog(mainWindow!, {
       title: 'Export PDF',
@@ -257,7 +257,13 @@ function registerIpc(): void {
       return null;
     }
     const started = Date.now();
-    let pdf: Uint8Array = await printWindow.webContents.printToPDF({ preferCSSPageSize: true, printBackground: true });
+    let pdf: Uint8Array = await printWindow.webContents.printToPDF({
+      preferCSSPageSize: true,
+      printBackground: true,
+      // Reading PDFs get bookmarks from the headings and tags for screen readers.
+      generateDocumentOutline: !!options?.outline,
+      generateTaggedPDF: !!options?.tagged,
+    });
     debug('printToPDF took', Date.now() - started, 'ms');
     // Metadata and the TrimBox/BleedBox printers use, which printToPDF can't write.
     if (finish) pdf = await finishPdf(pdf, finish);

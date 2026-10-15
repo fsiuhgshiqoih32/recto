@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld('rectoDesktop', {
   platform: process.platform,
   setSpellcheckLanguages: (codes: string[]) => ipcRenderer.invoke('spellcheck:set-languages', codes),
   layoutPdf: (html: string) => ipcRenderer.invoke('pdf:layout', html),
-  savePdf: (fileName: string, finish?: unknown) => ipcRenderer.invoke('pdf:save', fileName, finish),
+  savePdf: (fileName: string, finish?: unknown, options?: unknown) => ipcRenderer.invoke('pdf:save', fileName, finish, options),
   cancelPdf: () => ipcRenderer.invoke('pdf:cancel'),
   takePendingFile: () => ipcRenderer.invoke('file:take-pending'),
   onOpenFile: listen('file:open'),

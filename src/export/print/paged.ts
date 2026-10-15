@@ -26,6 +26,11 @@ export interface PrintDocumentOptions {
   renderId?: string;
   /** Hyphenator for the book's language (see i18n/hyphenate). */
   hyphenate?: (text: string) => string;
+  /**
+   * A PDF to read on screen rather than print: links stay live (the contents,
+   * cross-references, store links) and there is no bleed.
+   */
+  digital?: boolean;
 }
 
 /** Metadata and page boxes to add to a printed PDF (see finish.ts). */
@@ -48,7 +53,8 @@ export interface PagedMessage {
 }
 
 export function printDocument(source: Book, opts: PrintDocumentOptions): string {
-  const book = editionOf(source, 'print');
+  const edition = editionOf(source, 'print');
+  const book = opts.digital ? { ...edition, style: { ...edition.style, bleed: false } } : edition;
   const theme = themeOf(book);
   const { dir } = languageInfo(book.meta.language);
   const pages = opts.pages ?? estimatePages(book);
@@ -60,7 +66,7 @@ export function printDocument(source: Book, opts: PrintDocumentOptions): string 
     ornament: (id) => ORNAMENTS[id],
     // Large print sets ragged right with no hyphenation.
     hyphenate: book.style.largePrint ? undefined : opts.hyphenate,
-    links: false,
+    links: !!opts.digital,
   });
   const firstBody = book.elements.find((el) => el.matter === 'body');
   const wanted = opts.elementIds ? new Set(opts.elementIds) : null;

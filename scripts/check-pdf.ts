@@ -297,6 +297,21 @@ rich content with bleed: ${count} pages → ${path}`);
   check(pdf.getTitle() === book.meta.title && pdf.getAuthor() === book.meta.author, 'the PDF carries the title and author');
 }
 
+// A PDF for reading: live contents links and bookmarks.
+{
+  const book = sampleBook();
+  const path = join('out', 'sample-reading.pdf');
+  await renderPdf(book, path, { digital: true });
+  const doc = await getDocument({ data: new Uint8Array(readFileSync(path)) }).promise;
+  let links = 0;
+  for (let i = 1; i <= doc.numPages; i++) links += (await (await doc.getPage(i)).getAnnotations()).filter((a: { subtype: string }) => a.subtype === 'Link').length;
+  const outline = (await doc.getOutline()) ?? [];
+  console.log(`
+reading PDF → ${path}`);
+  check(links >= 6, `the contents entries are live links (${links} links)`);
+  check(outline.length >= 6, `the PDF has bookmarks (${outline.length} top-level)`);
+}
+
 // A paperback wrap cover: one page at the exact wrap size, with the spine and back text.
 {
   const book = sampleBook();

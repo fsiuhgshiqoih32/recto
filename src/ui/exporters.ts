@@ -60,16 +60,18 @@ export function saveRectoFile(book: Book): void {
  * Desktop app: lays the book out off-screen, then writes the PDF straight to a
  * file the author picks. Resolves to the saved path, or null if they cancelled.
  */
-export async function savePdfDesktop(book: Book, onLaidOut?: (pages: number) => void): Promise<{ path: string; pages: number } | null> {
+export async function savePdfDesktop(book: Book, onLaidOut?: (pages: number) => void, digital = false): Promise<{ path: string; pages: number } | null> {
   if (!desktop) throw new Error('Not running in the desktop app.');
   const shell = desktop;
   const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
   const { pages } = await layoutUntilSettled(book, async (hint) => {
-    const { pages: laidOut } = await shell.layoutPdf(printDocument(book, { fontUrl, pagedUrl: pagedUrl(), pages: hint, hyphenate }));
+    const { pages: laidOut } = await shell.layoutPdf(printDocument(book, { fontUrl, pagedUrl: pagedUrl(), pages: hint, hyphenate, digital }));
     return laidOut;
   });
   onLaidOut?.(pages);
-  const saved = await shell.savePdf(fileNameFor(book, 'pdf'), pdfFinish(book, 'interior'));
+  const name = digital ? fileNameFor(book, 'pdf').replace(/\.pdf$/, '-reading.pdf') : fileNameFor(book, 'pdf');
+  const finish = pdfFinish(digital ? { ...book, style: { ...book.style, bleed: false } } : book, 'interior');
+  const saved = await shell.savePdf(name, finish, digital ? { outline: true, tagged: true } : undefined);
   return saved ? { path: saved.path, pages } : null;
 }
 
@@ -96,7 +98,7 @@ function layoutInFrame(frame: HTMLIFrameElement, html: (renderId: string) => str
 }
 
 /** Lays the whole book out in a hidden frame, then hands the frame to `use` before removing it. */
-async function withPrintLayout<T>(book: Book, use: (frame: HTMLIFrameElement, pages: number) => Promise<T> | T): Promise<T> {
+async function withPrintLayout<T>(book: Book, use: (frame: HTMLIFrameElement, pages: number) => Promise<T> | T, digital = false): Promise<T> {
   const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
   const frame = document.createElement('iframe');
   frame.title = 'Print layout';
@@ -105,7 +107,7 @@ async function withPrintLayout<T>(book: Book, use: (frame: HTMLIFrameElement, pa
   document.body.appendChild(frame);
   try {
     const { pages } = await layoutUntilSettled(book, (hint) =>
-      layoutInFrame(frame, (renderId) => printDocument(book, { fontUrl, pagedUrl: pagedUrl(), pages: hint, renderId, hyphenate })),
+      layoutInFrame(frame, (renderId) => printDocument(book, { fontUrl, pagedUrl: pagedUrl(), pages: hint, renderId, hyphenate, digital })),
     );
     return await use(frame, pages);
   } finally {
@@ -117,7 +119,7 @@ async function withPrintLayout<T>(book: Book, use: (frame: HTMLIFrameElement, pa
  * Lays the whole book out in a hidden frame and opens the browser's print
  * dialog on it ("Save as PDF").
  */
-export function printBook(book: Book, onLaidOut?: (pages: number) => void): Promise<number> {
+export function printBook(book: Book, onLaidOut?: (pages: number) => void, digital = false): Promise<number> {
   return withPrintLayout(book, async (frame, pages) => {
     onLaidOut?.(pages);
     // Let the "laid out" state paint before the (blocking) print dialog opens.
@@ -125,7 +127,15 @@ export function printBook(book: Book, onLaidOut?: (pages: number) => void): Prom
     frame.contentWindow!.focus();
     frame.contentWindow!.print();
     return pages;
-  });
+  }, digital);
+}
+
+/** Builds the Word document and downloads it. */
+export async function exportDocx(book: Book): Promise<number> {
+  const { buildDocx } = await import('../export/docx/docx');
+  const bytes = await buildDocx(book);
+  downloadBlob(new Blob([bytes as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), fileNameFor(book, 'docx'));
+  return bytes.length;
 }
 
 /** Lays the book out as it will print and measures what printers check: page count, blank runs, image resolution. */

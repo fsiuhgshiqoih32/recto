@@ -51,6 +51,8 @@ function assetPath(url: URL): string | null {
 export interface RenderOptions {
   /** Runs against the laid-out print document, before the PDF is written (tests use it to inspect pages). */
   inspect?: (page: Page) => Promise<void>;
+  /** A PDF for reading: live links, bookmarks and tags, no bleed. */
+  digital?: boolean;
 }
 
 const fontUrl = (file: string) => `${ORIGIN}/fonts/${file}`;
@@ -89,10 +91,12 @@ export function renderPdf(book: Book, outPath: string, options: RenderOptions = 
   return withPrintPage(async (page, show) => {
     const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
     const result = await layoutUntilSettled(book, (pages) =>
-      show(printDocument(book, { pages, fontUrl, pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`, hyphenate })),
+      show(printDocument(book, { pages, fontUrl, pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`, hyphenate, digital: options.digital })),
     );
     await options.inspect?.(page);
-    writeFileSync(outPath, await finishPdf(await page.pdf({ preferCSSPageSize: true, printBackground: true }), pdfFinish(book, 'interior')));
+    const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true, outline: !!options.digital, tagged: !!options.digital });
+    const finished = options.digital ? { ...book, style: { ...book.style, bleed: false } } : book;
+    writeFileSync(outPath, await finishPdf(pdf, pdfFinish(finished, 'interior')));
     return result;
   });
 }
@@ -111,13 +115,13 @@ async function main() {
   const out = outIndex >= 0 ? args.splice(outIndex, 2)[1] : undefined;
   const input = args.find((a) => !a.startsWith('-'));
   if (!input && !args.includes('--sample')) {
-    console.error('usage: npm run pdf -- <book.recto> [-o out.pdf]   |   npm run pdf -- --sample');
+    console.error('usage: npm run pdf -- <book.recto> [-o out.pdf] [--reading]   |   npm run pdf -- --sample');
     process.exit(1);
   }
   const book = input ? parseBook(readFileSync(input, 'utf8')) : sampleBook();
   const outPath = resolve(out ?? fileNameFor(book, 'pdf'));
   const started = Date.now();
-  const { pages, passes } = await renderPdf(book, outPath);
+  const { pages, passes } = await renderPdf(book, outPath, { digital: args.includes('--reading') });
   console.log(`${outPath}: ${pages} pages, ${passes} layout pass(es), ${((Date.now() - started) / 1000).toFixed(1)}s`);
 }
 

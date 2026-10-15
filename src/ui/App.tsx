@@ -13,7 +13,7 @@ import { applyTheme, resolveTheme, type UiThemeChoice, useAppearance } from './a
 import { AppearanceMenu } from './AppearanceMenu';
 import { DropdownMenu } from './DropdownMenu';
 import { ElementPane } from './ElementPane';
-import { exportEpub, exportStoreEditions, printBook, savePdfDesktop, saveRectoFile } from './exporters';
+import { exportDocx, exportEpub, exportStoreEditions, printBook, savePdfDesktop, saveRectoFile } from './exporters';
 import { feeText, formatSize } from '../preflight/checks';
 
 import { BrandMark, Icon } from './icons';
@@ -33,9 +33,9 @@ type Drawer = 'contents' | 'settings' | 'preview' | null;
 type Notice = { kind: 'info' | 'success' | 'error' | 'busy'; message: string };
 const VIEWS = [{ id: 'format', label: 'Format' }, { id: 'edit', label: 'Edit' }] as const;
 const PANELS = [{ id: 'style', label: 'Style' }, { id: 'section', label: 'Section' }, { id: 'book', label: 'Book' }, { id: 'publish', label: 'Publish' }] as const;
-type ExportFormat = 'epub' | 'stores' | 'pdf';
-const EXPORT_PROGRESS: Record<ExportFormat, string> = { epub: 'Building EPUB…', stores: 'Building an EPUB for each store…', pdf: 'Laying out every page…' };
-const EXPORT_NAME: Record<ExportFormat, string> = { epub: 'EPUB', stores: 'Store edition', pdf: 'PDF' };
+type ExportFormat = 'epub' | 'stores' | 'pdf' | 'reading' | 'docx';
+const EXPORT_PROGRESS: Record<ExportFormat, string> = { epub: 'Building EPUB…', stores: 'Building an EPUB for each store…', pdf: 'Laying out every page…', reading: 'Laying out every page…', docx: 'Building the Word document…' };
+const EXPORT_NAME: Record<ExportFormat, string> = { epub: 'EPUB', stores: 'Store edition', pdf: 'PDF', reading: 'PDF', docx: 'Word' };
 function firstChapterId(book: Book): string | null { return (book.elements.find((el) => el.kind === 'chapter') ?? book.elements[0])?.id ?? null; }
 
 export function App({ initial }: { initial: Book }) {
@@ -97,12 +97,15 @@ export function App({ initial }: { initial: Book }) {
       } else if (format === 'stores') {
         const count = await exportStoreEditions(book);
         notify(`Downloaded ${count} store editions in one zip. Upload each store’s EPUB to that store.`, 'success');
+      } else if (format === 'docx') {
+        const bytes = await exportDocx(book);
+        notify(`Word document downloaded (${formatSize(bytes)}).`, 'success');
       }
       else if (desktop) {
-        const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. Choose where to save the PDF…`, 'busy'));
+        const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. Choose where to save the PDF…`, 'busy'), format === 'reading');
         notify(saved ? `Saved ${saved.pages}-page PDF to ${saved.path}` : 'PDF export canceled.', saved ? 'success' : 'info');
       } else {
-        await printBook(book, (pages) => notify(`Laid out ${pages} pages. Opening the print dialog…`, 'busy'));
+        await printBook(book, (pages) => notify(`Laid out ${pages} pages. Opening the print dialog…`, 'busy'), format === 'reading');
         notify('Print dialog opened. Choose “Save as PDF” to save your book.', 'success');
       }
     } catch (error) { notify(`${EXPORT_NAME[format]} export failed: ${error instanceof Error ? error.message : error}`, 'error'); }
@@ -178,6 +181,8 @@ export function App({ initial }: { initial: Book }) {
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('epub'); }}><Icon name="book" /><span>Export EPUB<small>For e-readers and ebook stores</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('stores'); }}><Icon name="storeLink" /><span>EPUB for each store<small>{hasNode(book, 'storeLinks') ? 'Each links only to its own store, in one zip' : 'Same as one EPUB until the book has store links'}</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdf'); }}><Icon name="printer" /><span>{desktop ? 'Export PDF' : 'Print PDF'}<small>{desktop ? 'Save a print-ready PDF' : 'Print or save as PDF'}</small></span></button>
+              <button type="button" role="menuitem" onClick={() => { close(); void runExport('reading'); }}><Icon name="file" /><span>PDF for reading<small>{desktop ? 'Live links and bookmarks, for direct sales' : 'Live links, for direct sales'}</small></span></button>
+              <button type="button" role="menuitem" onClick={() => { close(); void runExport('docx'); }}><Icon name="edit" /><span>Word document<small>For an editor, or KDP’s Word upload</small></span></button>
             </>}
           </DropdownMenu>
         </div>

@@ -17,7 +17,7 @@ export interface RectoDesktop {
   /** Lays out a print document (from printDocument) off-screen; returns its page count. */
   layoutPdf(html: string): Promise<{ pages: number }>;
   /** Asks where to save, then writes the last laid-out document as a PDF, finished with metadata and page boxes. Null if cancelled. */
-  savePdf(fileName: string, finish?: PdfFinish): Promise<{ path: string } | null>;
+  savePdf(fileName: string, finish?: PdfFinish, options?: { outline?: boolean; tagged?: boolean }): Promise<{ path: string } | null>;
   cancelPdf(): Promise<void>;
   /** A .recto file the app was launched with (double-clicked in the file manager), if any. */
   takePendingFile(): Promise<OpenedFile | null>;
