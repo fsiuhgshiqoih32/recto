@@ -16,6 +16,7 @@ import { isBoxSet, volumeMembers } from '../model/boxset';
 import { listBooks, loadBook } from '../store/db';
 import { Field, Toggle } from './fields';
 import { StyleBuilder } from './StyleBuilder';
+import { canBeVertical } from '../export/epub/vertical';
 
 const UNITS = [{ id: 'in', label: 'in' }, { id: 'mm', label: 'mm' }] as const;
 
@@ -149,6 +150,12 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
         label="Embed fonts in the ebook"
         hint="Off lets readers use their own fonts, which most stores prefer."
       />
+      {canBeVertical(book.meta.language) && <Toggle
+        checked={!!style.verticalText}
+        onChange={(verticalText) => actions.updateStyle({ verticalText })}
+        label="Vertical text in the ebook"
+        hint="Top to bottom, columns right to left, with short numbers set upright. The print edition stays horizontal."
+      />}
       <Toggle
         checked={!!style.printPageNumbers}
         onChange={(printPageNumbers) => actions.updateStyle({ printPageNumbers })}

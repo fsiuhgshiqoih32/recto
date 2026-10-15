@@ -151,6 +151,8 @@ export interface BookStyle {
   printPageNumbers?: boolean;
   /** Changes to the style: fonts, headings, paragraphs, ornaments, advanced CSS. */
   custom?: StyleCustom;
+  /** Japanese and Chinese ebooks: vertical text, columns right to left. Print stays horizontal. */
+  verticalText?: boolean;
 }
 
 export interface Book {

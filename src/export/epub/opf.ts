@@ -29,6 +29,8 @@ export function opfDocument(opts: {
   coverImageId?: string;
   /** Right-to-left books turn their pages the other way. */
   dir?: 'ltr' | 'rtl';
+  /** Vertical Japanese or Chinese: Kindle reads the writing mode from this meta. */
+  writingMode?: 'vertical-rl';
   accessibility?: AccessibilityMetadata;
   /** The print edition a page list refers to (dc:source), e.g. urn:isbn:978…. */
   source?: string;
@@ -63,6 +65,7 @@ export function opfDocument(opts: {
   }
   lines.push(`<meta property="dcterms:modified">${modifiedStamp(opts.modified)}</meta>`);
   if (opts.accessibility) lines.push(...accessibilityMetaLines(opts.accessibility, esc));
+  if (opts.writingMode) lines.push(`<meta name="primary-writing-mode" content="${opts.writingMode}"/>`);
   // EPUB 2 readers find the cover through this meta.
   if (opts.coverImageId) lines.push(`<meta name="cover" content="${escAttr(opts.coverImageId)}"/>`);
 

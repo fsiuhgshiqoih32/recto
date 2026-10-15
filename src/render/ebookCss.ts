@@ -2,6 +2,7 @@ import type { Book } from '../model/book';
 import { baseCss, languageCss } from '../themes';
 import { bookFonts, fontFaceCss } from '../themes/fonts';
 import { themeOf } from './html';
+import { VERTICAL_CSS, isVertical } from '../export/epub/vertical';
 
 /**
  * Stylesheet for reflowable ebooks (and the ebook preview). Sizes are in em so
@@ -13,6 +14,7 @@ export function ebookCss(book: Book, fontUrl?: (file: string) => string, text?: 
   const theme = themeOf(book);
   const lang = book.meta.language;
   const fonts = fontUrl ? `${fontFaceCss(bookFonts([theme.fonts.body, theme.fonts.heading], lang), fontUrl, text)}\n` : '';
+  const vertical = isVertical(book) ? VERTICAL_CSS : '';
   return `${fonts}${baseCss(theme, lang)}
 body { margin: 0 3%; line-height: 1.45; widows: 2; orphans: 2; }
 .el p { text-align: justify; -webkit-hyphens: auto; hyphens: auto; }
@@ -32,5 +34,6 @@ nav#toc ol ol { padding-inline-start: 1.5em; }
 .heading-image img { max-height: 35vh; }
 img.figure { max-width: 100%; }
 ${theme.css}
-${languageCss(lang)}`;
+${languageCss(lang)}${vertical}
+`;
 }

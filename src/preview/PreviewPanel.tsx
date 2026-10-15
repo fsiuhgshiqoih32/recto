@@ -11,6 +11,7 @@ import { TRIMS, estimatePages, kdpMinInside, trimLabel } from '../export/print/p
 import { fontUrl, pagedUrl } from './assets';
 import { TabBar } from '../ui/TabBar';
 import { Icon } from '../ui/icons';
+import { isVertical, tateChuYoko } from '../export/epub/vertical';
 
 export type Device = 'ereader' | 'phone' | 'tablet' | 'print';
 
@@ -73,7 +74,7 @@ function EbookPreview({ book, element, device, active }: { book: Book; element: 
     if (!debouncedElement) return '';
     const current = debouncedBook.elements.find((el) => el.id === debouncedElement.id) ?? debouncedElement;
     if (current.include === 'print') return '';
-    const body = renderElement(current, {
+    const rendered = renderElement(current, {
       // Chapter numbers count only the sections the ebook has.
       book: editionOf(debouncedBook, 'ebook'),
       theme: themeOf(debouncedBook),
@@ -81,6 +82,7 @@ function EbookPreview({ book, element, device, active }: { book: Book; element: 
       hrefFor: () => '#',
       ornament: (id) => ORNAMENTS[id],
     });
+    const body = isVertical(debouncedBook) ? tateChuYoko(rendered) : rendered;
     const screen = device === 'ereader' ? '#f4f2ec' : '#ffffff';
     const size = device === 'tablet' ? 17 : device === 'phone' ? 15 : 16;
     const { dir } = languageInfo(debouncedBook.meta.language);

@@ -16,6 +16,7 @@ import { buildTocTree, type Landmark, navDocument } from './nav';
 import { accessibilityFacts, accessibilityMetadata } from './accessibility';
 import { ncxDocument } from './ncx';
 import { type ManifestItem, bookIdentifier, opfDocument } from './opf';
+import { isVertical, tateChuYoko } from './vertical';
 
 export interface EpubOptions {
   /** Loads a font file (by name) for embedding. Required when book.style.embedFonts is on. */
@@ -119,6 +120,9 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
   // Print page numbers: a marker where each printed page starts.
   const pagePlan = options.pageStarts?.length ? placePageBreaks(options.pageStarts, rendered.map((r) => ({ id: r.element.id, html: r.html }))) : null;
   if (pagePlan) rendered = rendered.map((r) => ({ ...r, html: insertPageBreaks(r.html, pagePlan.markers.get(r.element.id) ?? []) }));
+  // Vertical text: short numbers read across the column.
+  const vertical = isVertical(book);
+  if (vertical) rendered = rendered.map((r) => ({ ...r, html: tateChuYoko(r.html) }));
 
   // Cover.
   let coverImageId: string | undefined;
@@ -199,7 +203,9 @@ export async function epubFiles(source: Book, options: EpubOptions = {}): Promis
       modified: options.modified ?? new Date(),
       items,
       coverImageId,
-      dir,
+      // Vertical columns run right to left, so pages turn to the left too.
+      dir: vertical ? 'rtl' : dir,
+      writingMode: vertical ? 'vertical-rl' : undefined,
       accessibility: accessibilityMetadata(book, accessibilityFacts(book, { pageList: !!pagePlan })),
       creators: bookCreators(book),
       source: pagePlan ? paginationSource(book) : undefined,
