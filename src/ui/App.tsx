@@ -14,22 +14,24 @@ import { AppearanceMenu } from './AppearanceMenu';
 import { DropdownMenu } from './DropdownMenu';
 import { ElementPane } from './ElementPane';
 import { exportEpub, printBook, savePdfDesktop, saveRectoFile } from './exporters';
+import { feeText, formatSize } from '../preflight/checks';
 import { BrandMark, Icon } from './icons';
 import { ImportDialog } from './ImportDialog';
 import { transition } from './motion';
 import { BookPanel, SectionPanel, StylePanel } from './Inspector';
 import { Navigator } from './Navigator';
+import { PublishPanel } from './PublishPanel';
 import { usePreference } from './preferences';
 import { TabBar } from './TabBar';
 import { useBook } from './useBook';
 import { useDrawer, useMediaQuery } from './useDrawer';
 
 type WorkspaceView = 'format' | 'edit';
-type InspectorTab = 'style' | 'section' | 'book';
+type InspectorTab = 'style' | 'section' | 'book' | 'publish';
 type Drawer = 'contents' | 'settings' | 'preview' | null;
 type Notice = { kind: 'info' | 'success' | 'error' | 'busy'; message: string };
 const VIEWS = [{ id: 'format', label: 'Format' }, { id: 'edit', label: 'Edit' }] as const;
-const PANELS = [{ id: 'style', label: 'Style' }, { id: 'section', label: 'Section' }, { id: 'book', label: 'Book' }] as const;
+const PANELS = [{ id: 'style', label: 'Style' }, { id: 'section', label: 'Section' }, { id: 'book', label: 'Book' }, { id: 'publish', label: 'Publish' }] as const;
 function firstChapterId(book: Book): string | null { return (book.elements.find((el) => el.kind === 'chapter') ?? book.elements[0])?.id ?? null; }
 
 export function App({ initial }: { initial: Book }) {
@@ -85,7 +87,10 @@ export function App({ initial }: { initial: Book }) {
     setExporting(true);
     notify(format === 'epub' ? 'Building EPUB…' : 'Laying out every page…', 'busy');
     try {
-      if (format === 'epub') { await exportEpub(book); notify('EPUB downloaded.', 'success'); }
+      if (format === 'epub') {
+        const bytes = await exportEpub(book);
+        notify(`EPUB downloaded (${formatSize(bytes)}; KDP delivery costs ${feeText(bytes)} a sale).`, 'success');
+      }
       else if (desktop) {
         const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. Choose where to save the PDF…`, 'busy'));
         notify(saved ? `Saved ${saved.pages}-page PDF to ${saved.path}` : 'PDF export canceled.', saved ? 'success' : 'info');
@@ -199,14 +204,15 @@ export function App({ initial }: { initial: Book }) {
             {tab === 'style' && <StylePanel book={book} actions={actions} />}
             {tab === 'section' && (element ? <SectionPanel book={book} element={element} actions={actions} onEdit={() => changeView('edit')} onShowBookDetails={showBookDetails} /> : <p className="empty-note">Add a section to get started.</p>)}
             {tab === 'book' && <BookPanel key={book.id} book={book} actions={actions} spellcheckNote={spellcheckNote} />}
+            {tab === 'publish' && <PublishPanel key={book.id} book={book} actions={actions} onOpen={(id) => { setSelectedId(id); changeView('edit'); }} />}
           </div>
         </aside>
         {drawer && <button type="button" className="drawer-backdrop" aria-label="Close panel" tabIndex={-1} onClick={closeDrawer} />}
       </main>
       <footer className={`statusbar ${notice?.kind ?? ''}`}>
         <span className="status" role={notice?.kind === 'error' ? 'alert' : 'status'} aria-live={notice?.kind === 'error' ? 'assertive' : 'polite'}>
-          {exporting ? <span className="activity-spinner" aria-hidden="true" /> : <Icon key={notice?.message ?? ''} className="status-icon" name={notice?.kind === 'error' ? 'alert' : notice?.kind === 'success' ? 'check' : 'shield'} size={14} />}
-          <span key={notice?.message ?? ''} className="status-text">{notice?.message || 'Your book stays on this device.'}</span>
+          {exporting ? <span className="activity-spinner" aria-hidden="true" /> : <Icon key={`icon:${notice?.message ?? ''}`} className="status-icon" name={notice?.kind === 'error' ? 'alert' : notice?.kind === 'success' ? 'check' : 'shield'} size={14} />}
+          <span key={`text:${notice?.message ?? ''}`} className="status-text">{notice?.message || 'Your book stays on this device.'}</span>
         </span>
         {notice && !exporting && <button className="icon-btn" type="button" aria-label="Dismiss status" onClick={() => setNotice(null)}><Icon name="close" size={14} /></button>}
         <span className="status-meta">{themeOf(book).name} · {book.elements.filter((entry) => entry.kind === 'chapter').length} chapters</span>

@@ -1,5 +1,8 @@
 import JSZip from 'jszip';
 import type { Book, BookElement } from '../../model/book';
+import { decodeDataUrl } from '../../model/dataUrl';
+
+export { decodeDataUrl };
 import { ebookCss } from '../../render/ebookCss';
 import { esc, escAttr, renderBook, themeOf } from '../../render/html';
 import { ORNAMENTS } from '../../themes/ornaments';
@@ -33,14 +36,6 @@ const IMAGE_EXT: Record<string, string> = {
   'image/svg+xml': 'svg',
 };
 
-export function decodeDataUrl(url: string): { mediaType: string; bytes: Uint8Array } | null {
-  const m = /^data:([^;,]+)(;base64)?,(.*)$/s.exec(url);
-  if (!m) return null;
-  const bytes = m[2]
-    ? Uint8Array.from(atob(m[3]), (c) => c.charCodeAt(0))
-    : new TextEncoder().encode(decodeURIComponent(m[3]));
-  return { mediaType: m[1], bytes };
-}
 
 function xhtmlDocument(opts: { title: string; lang: string; dir: 'ltr' | 'rtl'; body: string; bodyType?: string }): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
