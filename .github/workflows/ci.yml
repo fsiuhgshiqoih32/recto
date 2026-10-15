@@ -19,7 +19,8 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       # The print checks typeset Japanese, which relies on system CJK fonts.
-      - run: sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      # Ghostscript too, to check PDF/X export (Recto finds an installed copy; it never ships one).
+      - run: sudo apt-get install -y --no-install-recommends fonts-noto-cjk ghostscript
       - name: End-to-end tests
         run: npm run test:e2e
       - name: Print layout checks (renders sample books to PDF)
@@ -104,12 +105,24 @@ jobs:
       - name: Allow Chromium's sandbox (Linux)
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Install Ghostscript, for the PDF/X test (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends ghostscript
       - name: Desktop app tests (Electron)
         run: ${{ runner.os == 'Linux' && 'xvfb-run --auto-servernum ' || '' }}npm run test:desktop
       - name: Build the installers
         run: npx electron-builder --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # The Microsoft Store package, with a placeholder identity: checks the config still builds.
+      - name: Build the Microsoft Store package (Windows)
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win appx --config electron-builder.store.cjs --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          RECTO_STORE_IDENTITY_NAME: 12345RectoContributors.Recto
+          RECTO_STORE_PUBLISHER: CN=00000000-0000-0000-0000-000000000000
+          RECTO_STORE_PUBLISHER_NAME: Recto contributors
       - name: Test the packaged app
         run: ${{ runner.os == 'Linux' && 'xvfb-run --auto-servernum ' || '' }}npx playwright test --config playwright.desktop.config.ts
         env:

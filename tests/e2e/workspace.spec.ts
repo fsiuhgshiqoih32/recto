@@ -142,6 +142,9 @@ test('guards exports from both UI and desktop commands and handles cancellation'
       onMenu: (handler: (command: string) => void) => { state.menu = handler; return () => {}; },
       layoutPdf: () => { state.calls++; return new Promise((resolve) => { state.finish = resolve; }); },
       savePdf: async () => null,
+      findTools: async () => ({ kindlePreviewer: false, ghostscript: null }),
+      openRecto: async () => null,
+      saveRecto: async () => null,
     } });
   });
   await page.reload();

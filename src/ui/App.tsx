@@ -8,12 +8,12 @@ import { sampleBook } from '../model/sample';
 import { PreviewPanel, type Device } from '../preview/PreviewPanel';
 import { themeOf } from '../render/html';
 import { type BookSummary, deleteBook, listBooks, loadBook, rememberOpenBook, saveBook } from '../store/db';
-import { parseBook } from '../store/file';
+import { fileNameFor, parseBook, serializeBook } from '../store/file';
 import { applyTheme, resolveTheme, type UiThemeChoice, useAppearance } from './appearance';
 import { AppearanceMenu } from './AppearanceMenu';
 import { DropdownMenu } from './DropdownMenu';
 import { ElementPane } from './ElementPane';
-import { exportDocx, exportEpub, exportStoreEditions, printBook, savePdfDesktop, saveRectoFile } from './exporters';
+import { exportDocx, exportEpub, exportStoreEditions, previewInKindle, printBook, savePdfDesktop, saveRectoFile } from './exporters';
 import { feeText, formatSize } from '../preflight/checks';
 
 import { BrandMark, Icon } from './icons';
@@ -28,6 +28,8 @@ import { useBook } from './useBook';
 import { useDrawer, useMediaQuery } from './useDrawer';
 import { LibraryPicker } from './BoxSetDialog';
 import { newBoxSet } from '../model/boxset';
+import { fileLink, linkFile } from '../store/fileLinks';
+import type { DesktopTools } from '../desktop';
 
 type WorkspaceView = 'format' | 'edit';
 type InspectorTab = 'style' | 'section' | 'book' | 'publish';
@@ -35,9 +37,9 @@ type Drawer = 'contents' | 'settings' | 'preview' | null;
 type Notice = { kind: 'info' | 'success' | 'error' | 'busy'; message: string };
 const VIEWS = [{ id: 'format', label: 'Format' }, { id: 'edit', label: 'Edit' }] as const;
 const PANELS = [{ id: 'style', label: 'Style' }, { id: 'section', label: 'Section' }, { id: 'book', label: 'Book' }, { id: 'publish', label: 'Publish' }] as const;
-type ExportFormat = 'epub' | 'stores' | 'pdf' | 'reading' | 'docx';
-const EXPORT_PROGRESS: Record<ExportFormat, string> = { epub: 'Building EPUB…', stores: 'Building an EPUB for each store…', pdf: 'Laying out every page…', reading: 'Laying out every page…', docx: 'Building the Word document…' };
-const EXPORT_NAME: Record<ExportFormat, string> = { epub: 'EPUB', stores: 'Store edition', pdf: 'PDF', reading: 'PDF', docx: 'Word' };
+type ExportFormat = 'epub' | 'stores' | 'pdf' | 'reading' | 'pdfx' | 'docx' | 'kindle';
+const EXPORT_PROGRESS: Record<ExportFormat, string> = { epub: 'Building EPUB…', stores: 'Building an EPUB for each store…', pdf: 'Laying out every page…', reading: 'Laying out every page…', pdfx: 'Laying out every page…', docx: 'Building the Word document…', kindle: 'Building the EPUB for Kindle Previewer…' };
+const EXPORT_NAME: Record<ExportFormat, string> = { epub: 'EPUB', stores: 'Store edition', pdf: 'PDF', reading: 'PDF', pdfx: 'PDF/X', docx: 'Word', kindle: 'Kindle preview' };
 function firstChapterId(book: Book): string | null { return (book.elements.find((el) => el.kind === 'chapter') ?? book.elements[0])?.id ?? null; }
 
 export function App({ initial }: { initial: Book }) {
@@ -50,6 +52,8 @@ export function App({ initial }: { initial: Book }) {
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [boxSetOpen, setBoxSetOpen] = useState(false);
+  const [tools, setTools] = useState<DesktopTools | null>(null);
+  useEffect(() => { void desktop?.findTools().then(setTools, () => setTools(null)); }, []);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unavailable'>('saved');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -103,10 +107,14 @@ export function App({ initial }: { initial: Book }) {
       } else if (format === 'docx') {
         const bytes = await exportDocx(book);
         notify(`Word document downloaded (${formatSize(bytes)}).`, 'success');
+      } else if (format === 'kindle') {
+        await previewInKindle(book);
+        notify('Opened in Kindle Previewer. It takes a moment to convert the book.', 'success');
       }
       else if (desktop) {
-        const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. Choose where to save the PDF…`, 'busy'), format === 'reading');
-        notify(saved ? `Saved ${saved.pages}-page PDF to ${saved.path}` : 'PDF export canceled.', saved ? 'success' : 'info');
+        const kind = format === 'reading' ? 'reading' : format === 'pdfx' ? 'pdfx' : 'print';
+        const saved = await savePdfDesktop(book, (pages) => notify(`Laid out ${pages} pages. ${kind === 'pdfx' ? 'Choose where to save; Ghostscript then converts it to PDF/X-1a…' : 'Choose where to save the PDF…'}`, 'busy'), kind);
+        notify(saved ? `Saved ${saved.pages}-page ${kind === 'pdfx' ? 'PDF/X-1a' : 'PDF'} to ${saved.path}` : 'PDF export canceled.', saved ? 'success' : 'info');
       } else {
         await printBook(book, (pages) => notify(`Laid out ${pages} pages. Opening the print dialog…`, 'busy'), format === 'reading');
         notify('Print dialog opened. Choose “Save as PDF” to save your book.', 'success');
@@ -114,9 +122,32 @@ export function App({ initial }: { initial: Book }) {
     } catch (error) { notify(`${EXPORT_NAME[format]} export failed: ${error instanceof Error ? error.message : error}`, 'error'); }
     finally { exportLock.current = false; setExporting(false); }
   };
-  const openText = (name: string, text: string) => {
-    try { switchTo(parseBook(text)); notify(`Opened ${name}.`, 'success'); }
+  const openText = (name: string, text: string, link?: { path?: string; modified?: number }) => {
+    try {
+      const opened = parseBook(text);
+      // Desktop: remember the file, so Save writes back to it.
+      if (link?.path && link.modified !== undefined) linkFile(opened.id, { path: link.path, modified: link.modified });
+      switchTo(opened);
+      notify(`Opened ${name}.`, 'success');
+    }
     catch (error) { notify(error instanceof Error ? error.message : 'That file could not be opened.', 'error'); }
+  };
+  /** Desktop: saves the book to its .recto file in place, asking first if the file changed on disk. */
+  const saveToFile = async (target: Book, saveAs = false, force = false): Promise<void> => {
+    if (!desktop) return saveRectoFile(target);
+    const link = fileLink(target.id);
+    try {
+      const result = await desktop.saveRecto(serializeBook(target), { path: link?.path, modified: link?.modified, name: fileNameFor(target, 'recto'), saveAs, force });
+      if (!result) return;
+      if ('conflict' in result) {
+        const replace = window.confirm(`“${link?.path}” has changed since Recto last opened or saved it, perhaps on another computer through a synced folder.\n\nReplace it with the book as it is here? Cancel leaves the file alone; Save As keeps both.`);
+        if (replace) return saveToFile(target, false, true);
+        notify('Not saved: the file on disk changed. Use Save As to keep both versions.', 'info');
+        return;
+      }
+      linkFile(target.id, result);
+      notify(`Saved to ${result.path}`, 'success');
+    } catch (error) { notify(`Save failed: ${error instanceof Error ? error.message : error}`, 'error'); }
   };
   const openFile = async (file: File) => {
     try { openText(file.name, await file.text()); }
@@ -135,17 +166,19 @@ export function App({ initial }: { initial: Book }) {
       .catch(() => current && setSpellcheckNote(undefined));
     return () => { current = false; };
   }, [book.meta.language]);
-  const commands = useRef({ runExport, openText, switchTo, book });
-  commands.current = { runExport, openText, switchTo, book };
+  const commands = useRef({ runExport, openText, switchTo, saveToFile, book });
+  commands.current = { runExport, openText, switchTo, saveToFile, book };
   useEffect(() => {
     if (!desktop) return;
-    void desktop.takePendingFile().then((file) => file && commands.current.openText(file.name, file.text));
-    const offOpen = desktop.onOpenFile((file) => commands.current.openText(file.name, file.text));
-    const offMenu = desktop.onMenu((command) => {
+    const shell = desktop;
+    void shell.takePendingFile().then((file) => file && commands.current.openText(file.name, file.text, file));
+    const offOpen = shell.onOpenFile((file) => commands.current.openText(file.name, file.text, file));
+    const offMenu = shell.onMenu((command) => {
       const current = commands.current;
       if (command === 'import') setImportOpen(true);
-      else if (command === 'open') openInput.current?.click();
-      else if (command === 'save') saveRectoFile(current.book);
+      else if (command === 'open') void shell.openRecto().then((file) => file && commands.current.openText(file.name, file.text, file));
+      else if (command === 'save') void current.saveToFile(current.book);
+      else if (command === 'save-as') void current.saveToFile(current.book, true);
       else if (command === 'export-epub') void current.runExport('epub');
       else if (command === 'export-pdf') void current.runExport('pdf');
       else if (command === 'new-book') current.switchTo(newBook());
@@ -163,8 +196,11 @@ export function App({ initial }: { initial: Book }) {
           <DropdownMenu label="File" button={<>File <Icon name="chevron" size={12} /></>}>
             {(close) => <>
               <button type="button" role="menuitem" onClick={() => { close(); setImportOpen(true); }}><Icon name="upload" />Import manuscript…</button>
-              <button type="button" role="menuitem" onClick={() => { close(); openInput.current?.click(); }}><Icon name="file" />Open Recto file…</button>
-              <button type="button" role="menuitem" onClick={() => { close(); saveRectoFile(book); }}><Icon name="download" />Save a copy (.recto)</button>
+              <button type="button" role="menuitem" onClick={() => { close(); if (desktop) void desktop.openRecto().then((file) => file && openText(file.name, file.text, file)); else openInput.current?.click(); }}><Icon name="file" />Open Recto file…</button>
+              {desktop ? <>
+                <button type="button" role="menuitem" onClick={() => { close(); void saveToFile(book); }}><Icon name="download" /><span>Save<small>{fileLink(book.id)?.path.split(/[\\/]/).pop() ?? 'As a .recto file'}</small></span></button>
+                <button type="button" role="menuitem" onClick={() => { close(); void saveToFile(book, true); }}><Icon name="download" />Save as…</button>
+              </> : <button type="button" role="menuitem" onClick={() => { close(); saveRectoFile(book); }}><Icon name="download" />Save a copy (.recto)</button>}
             </>}
           </DropdownMenu>
           <DropdownMenu label="Books" button={<><Icon name="library" /><span>Books</span><Icon name="chevron" size={12} /></>}>
@@ -186,6 +222,8 @@ export function App({ initial }: { initial: Book }) {
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdf'); }}><Icon name="printer" /><span>{desktop ? 'Export PDF' : 'Print PDF'}<small>{desktop ? 'Save a print-ready PDF' : 'Print or save as PDF'}</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('reading'); }}><Icon name="file" /><span>PDF for reading<small>{desktop ? 'Live links and bookmarks, for direct sales' : 'Live links, for direct sales'}</small></span></button>
               <button type="button" role="menuitem" onClick={() => { close(); void runExport('docx'); }}><Icon name="edit" /><span>Word document<small>For an editor, or KDP’s Word upload</small></span></button>
+              {tools?.ghostscript && <button type="button" role="menuitem" onClick={() => { close(); void runExport('pdfx'); }}><Icon name="printer" /><span>PDF/X-1a<small>{book.style.paper === 'color' ? 'CMYK' : 'Greyscale'}, for IngramSpark (Ghostscript {tools.ghostscript})</small></span></button>}
+              {tools?.kindlePreviewer && <button type="button" role="menuitem" onClick={() => { close(); void runExport('kindle'); }}><Icon name="preview" /><span>Preview in Kindle Previewer<small>Amazon’s own reader preview</small></span></button>}
             </>}
           </DropdownMenu>
         </div>

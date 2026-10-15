@@ -1,8 +1,12 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { type ElectronApplication, type Page, _electron as electron, expect, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { PDFDocument, PDFName } from '@pdfme/pdf-lib';
+import { findGhostscript } from '../../src/export/print/pdfx';
 
 // RECTO_APP points at a packaged build (release/win-unpacked/Recto.exe) to test the installer's payload.
 const executable = process.env.RECTO_APP;
@@ -12,10 +16,14 @@ let app: ElectronApplication;
 let window: Page;
 
 async function launch(...files: string[]) {
+  return launchWith({}, ...files);
+}
+
+async function launchWith(env: Record<string, string>, ...files: string[]) {
   profile = mkdtempSync(join(tmpdir(), 'recto-test-'));
   app = await electron.launch({
     ...(executable ? { executablePath: executable, args: files } : { args: ['.', ...files] }),
-    env: { ...process.env, RECTO_USER_DATA: profile },
+    env: { ...process.env, RECTO_USER_DATA: profile, ...env },
   });
   window = await app.firstWindow();
   await expect(window.locator('.book-title')).toContainText(/\w/);
@@ -152,4 +160,101 @@ test('shows persistent desktop export errors and unlocks the controls', async ()
   await expect(window.getByRole('button', { name: 'Export', exact: true })).toBeEnabled();
   await window.getByRole('button', { name: 'Dismiss status' }).click();
   await expect(window.getByRole('status')).toContainText('Your book stays on this device');
+});
+
+const clickMenu = (id: string) => app.evaluate(({ Menu }, itemId) => Menu.getApplicationMenu()!.getMenuItemById(itemId)!.click(), id);
+
+test('saves the book in place and asks before overwriting a file changed elsewhere', async () => {
+  await launch();
+  const out = join(profile, 'harrow.recto');
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showSaveDialog = (async () => ({ canceled: false, filePath: path })) as typeof dialog.showSaveDialog;
+  }, out);
+  await clickMenu('save');
+  await expect(window.locator('.status')).toContainText(`Saved to ${out}`);
+  expect(JSON.parse(readFileSync(out, 'utf8')).book.meta.title).toBe('The Lamp at Harrow Point');
+
+  // Saving again writes in place, without a dialog.
+  await app.evaluate(({ dialog }) => {
+    dialog.showSaveDialog = (async () => { throw new Error('should not ask'); }) as typeof dialog.showSaveDialog;
+  });
+  await window.getByRole('tab', { name: 'Book', exact: true }).click();
+  await window.locator('.inspector').getByLabel('Title', { exact: true }).fill('Harrow, Revised');
+  await clickMenu('save');
+  await expect.poll(() => JSON.parse(readFileSync(out, 'utf8')).book.meta.title).toBe('Harrow, Revised');
+
+  // Another computer changes the file (through a synced folder, say).
+  writeFileSync(out, readFileSync(out, 'utf8').replace('Harrow, Revised', 'Edited Elsewhere'));
+  const later = new Date(Date.now() + 60_000);
+  utimesSync(out, later, later);
+  await window.locator('.inspector').getByLabel('Title', { exact: true }).fill('Harrow, Third Draft');
+  window.once('dialog', (dialog) => void dialog.dismiss());
+  await clickMenu('save');
+  await expect(window.locator('.status')).toContainText('Not saved: the file on disk changed');
+  expect(JSON.parse(readFileSync(out, 'utf8')).book.meta.title).toBe('Edited Elsewhere');
+
+  window.once('dialog', (dialog) => void dialog.accept());
+  await clickMenu('save');
+  await expect.poll(() => JSON.parse(readFileSync(out, 'utf8')).book.meta.title).toBe('Harrow, Third Draft');
+});
+
+test('checks GitHub for a newer release only when asked', async () => {
+  let tag = 'v99.0.0';
+  let requests = 0;
+  const server = createServer((_request, response) => {
+    requests++;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ tag_name: tag, html_url: `https://github.com/fsiuhgshiqoih32/recto/releases/tag/${tag}` }));
+  });
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  try {
+    await launchWith({ RECTO_RELEASES_URL: `http://127.0.0.1:${(server.address() as AddressInfo).port}/latest` });
+    expect(requests).toBe(0);
+    await app.evaluate(({ dialog }) => {
+      const seen: string[] = ((globalThis as { messages?: string[] }).messages = []);
+      dialog.showMessageBox = (async (...args: unknown[]) => {
+        seen.push((args[args.length - 1] as { message: string }).message);
+        return { response: 1, checkboxChecked: false };
+      }) as typeof dialog.showMessageBox;
+    });
+    const messages = () => app.evaluate(() => (globalThis as { messages?: string[] }).messages ?? []);
+    await clickMenu('check-updates');
+    await expect.poll(messages).toEqual(['Recto 99.0.0 is available.']);
+    tag = `v${await app.evaluate(({ app: electronApp }) => electronApp.getVersion())}`;
+    await clickMenu('check-updates');
+    await expect.poll(messages).toEqual(['Recto 99.0.0 is available.', 'Recto is up to date.']);
+  } finally {
+    server.close();
+  }
+});
+
+test('opens the book in Kindle Previewer when it is installed', async () => {
+  // Any program stands in for Kindle Previewer: the test checks what Recto hands it.
+  await launchWith({ RECTO_KINDLE_PREVIEWER: process.execPath });
+  await window.getByRole('button', { name: 'Export', exact: true }).click();
+  await window.getByRole('menuitem', { name: /^Preview in Kindle Previewer/ }).click();
+  await expect(window.locator('.status')).toContainText('Opened in Kindle Previewer');
+  const epub = join(tmpdir(), 'recto-kindle', 'the-lamp-at-harrow-point.epub');
+  expect(existsSync(epub)).toBe(true);
+  expect(readFileSync(epub).subarray(0, 2).toString()).toBe('PK');
+});
+
+test('exports PDF/X-1a through an installed Ghostscript', async () => {
+  const gs = await findGhostscript();
+  test.skip(!gs, 'Ghostscript is not installed');
+  await launch();
+  const out = join(profile, 'book-pdfx.pdf');
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showSaveDialog = (async () => ({ canceled: false, filePath: path })) as typeof dialog.showSaveDialog;
+  }, out);
+  await window.getByRole('button', { name: 'Export', exact: true }).click();
+  await window.getByRole('menuitem', { name: /^PDF\/X-1a/ }).click();
+  await expect(window.locator('.status')).toContainText('PDF/X-1a', { timeout: 120_000 });
+  const bytes = readFileSync(out);
+  expect(bytes.subarray(0, 8).toString()).toBe('%PDF-1.3');
+  const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
+  // No object streams, so the document info is readable as it stands.
+  expect(bytes.toString('latin1')).toMatch(/\/GTS_PDFXVersion\s*\(PDF\/X-1/);
+  expect(String(pdf.catalog.get(PDFName.of('OutputIntents')))).toBeTruthy();
+  expect(pdf.getPages().every((page) => page.node.get(PDFName.of('TrimBox')))).toBe(true);
 });

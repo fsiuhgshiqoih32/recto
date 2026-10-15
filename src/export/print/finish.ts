@@ -30,20 +30,19 @@ export async function finishPdf(bytes: Uint8Array, finish: PdfFinish): Promise<U
   doc.setProducer('Recto (Chromium print engine)');
   doc.setLanguage(finish.language || 'en');
   const b = (finish.bleed ?? 0) * PT;
-  if (b > 0) {
-    doc.getPages().forEach((page, index) => {
-      const { width, height } = page.getMediaBox();
-      page.setBleedBox(0, 0, width, height);
-      if (finish.kind === 'cover') {
-        page.setTrimBox(b, b, width - 2 * b, height - 2 * b);
-        return;
-      }
-      // Page 1 is a right-hand page in a left-to-right book: its outside edge,
-      // and so its bleed, is on the right. Left-hand pages bleed on the left.
-      const bleedsRight = (index % 2 === 0) !== !!finish.rtl;
-      page.setTrimBox(bleedsRight ? 0 : b, b, width - b, height - 2 * b);
-    });
-  }
+  // Every page gets a TrimBox (PDF/X requires one); without bleed it is the whole page.
+  doc.getPages().forEach((page, index) => {
+    const { width, height } = page.getMediaBox();
+    page.setBleedBox(0, 0, width, height);
+    if (finish.kind === 'cover') {
+      page.setTrimBox(b, b, width - 2 * b, height - 2 * b);
+      return;
+    }
+    // Page 1 is a right-hand page in a left-to-right book: its outside edge,
+    // and so its bleed, is on the right. Left-hand pages bleed on the left.
+    const bleedsRight = (index % 2 === 0) !== !!finish.rtl;
+    page.setTrimBox(bleedsRight ? 0 : b, b, width - b, height - 2 * b);
+  });
   // Viewers open an interior as facing pages, page 1 alone on the recto side;
   // right-to-left books also turn their pages the other way.
   if (finish.kind === 'interior') {

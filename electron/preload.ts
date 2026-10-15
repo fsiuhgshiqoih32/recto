@@ -20,6 +20,10 @@ contextBridge.exposeInMainWorld('rectoDesktop', {
   savePdf: (fileName: string, finish?: unknown, options?: unknown) => ipcRenderer.invoke('pdf:save', fileName, finish, options),
   cancelPdf: () => ipcRenderer.invoke('pdf:cancel'),
   takePendingFile: () => ipcRenderer.invoke('file:take-pending'),
+  openRecto: () => ipcRenderer.invoke('file:open-dialog'),
+  saveRecto: (text: string, options: unknown) => ipcRenderer.invoke('file:save', text, options),
+  findTools: () => ipcRenderer.invoke('tools:find'),
+  openInKindlePreviewer: (bytes: Uint8Array, fileName: string) => ipcRenderer.invoke('kindle:open', bytes, fileName),
   onOpenFile: listen('file:open'),
   onMenu: listen('menu'),
 });

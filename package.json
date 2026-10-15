@@ -37,6 +37,7 @@
     "desktop": "npm run build && npm run desktop:build && electron .",
     "dist:win": "npm run build && npm run desktop:build && electron-builder --win --publish never",
     "dist": "npm run build && npm run desktop:build && electron-builder --publish never",
+    "dist:store": "node scripts/store-env.mjs && npm run build && npm run desktop:build && electron-builder --win appx --config electron-builder.store.cjs --publish never",
     "test:desktop": "npm run build && npm run desktop:build && playwright test --config playwright.desktop.config.ts"
   },
   "devDependencies": {

@@ -63,11 +63,15 @@ export function saveRectoFile(book: Book): void {
   downloadBlob(new Blob([serializeBook(book)], { type: 'application/json' }), fileNameFor(book, 'recto'));
 }
 
+/** What a desktop PDF export makes: the print-ready file, a PDF for reading, or PDF/X-1a (through Ghostscript). */
+export type PdfKind = 'print' | 'reading' | 'pdfx';
+
 /**
  * Desktop app: lays the book out off-screen, then writes the PDF straight to a
  * file the author picks. Resolves to the saved path, or null if they cancelled.
  */
-export async function savePdfDesktop(book: Book, onLaidOut?: (pages: number) => void, digital = false): Promise<{ path: string; pages: number } | null> {
+export async function savePdfDesktop(book: Book, onLaidOut?: (pages: number) => void, kind: PdfKind = 'print'): Promise<{ path: string; pages: number } | null> {
+  const digital = kind === 'reading';
   if (!desktop) throw new Error('Not running in the desktop app.');
   const shell = desktop;
   const hyphenate = (await loadHyphenator(book.meta.language)) ?? undefined;
@@ -76,9 +80,11 @@ export async function savePdfDesktop(book: Book, onLaidOut?: (pages: number) => 
     return laidOut;
   });
   onLaidOut?.(pages);
-  const name = digital ? fileNameFor(book, 'pdf').replace(/\.pdf$/, '-reading.pdf') : fileNameFor(book, 'pdf');
+  const suffix = kind === 'reading' ? '-reading' : kind === 'pdfx' ? '-pdfx' : '';
+  const name = fileNameFor(book, 'pdf').replace(/\.pdf$/, `${suffix}.pdf`);
   const finish = pdfFinish(digital ? { ...book, style: { ...book.style, bleed: false } } : book, 'interior');
-  const saved = await shell.savePdf(name, finish, digital ? { outline: true, tagged: true } : undefined);
+  const options = digital ? { outline: true, tagged: true } : kind === 'pdfx' ? { pdfx: { gray: book.style.paper !== 'color' } } : undefined;
+  const saved = await shell.savePdf(name, finish, options);
   return saved ? { path: saved.path, pages } : null;
 }
 
@@ -135,6 +141,14 @@ export function printBook(book: Book, onLaidOut?: (pages: number) => void, digit
     frame.contentWindow!.print();
     return pages;
   }, digital);
+}
+
+/** Desktop app: builds the EPUB and opens it in Kindle Previewer; resolves to where the EPUB was written. */
+export async function previewInKindle(book: Book): Promise<string> {
+  if (!desktop) throw new Error('Not running in the desktop app.');
+  const { buildEpub } = await import('../export/epub/package');
+  const bytes = await buildEpub(book, { loadFont, store: 'amazon', pageStarts: await pageStartsFor(book) });
+  return (await desktop.openInKindlePreviewer(bytes, fileNameFor(book, 'epub'))).path;
 }
 
 /** Builds the Word document and downloads it. */

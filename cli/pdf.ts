@@ -22,6 +22,7 @@ import { loadHyphenator } from '../src/i18n/hyphenate';
 import { fileNameFor, parseBook } from '../src/store/file';
 import { packageOf } from '../src/themes/fonts';
 import { type PageStart, readPageStarts } from '../src/export/print/pageMap';
+import { convertToPdfx, findGhostscript } from '../src/export/print/pdfx';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = 'http://recto.local';
@@ -54,6 +55,8 @@ export interface RenderOptions {
   inspect?: (page: Page) => Promise<void>;
   /** A PDF for reading: live links, bookmarks and tags, no bleed. */
   digital?: boolean;
+  /** PDF/X-1a, converted by an installed Ghostscript (grey, or CMYK for colour paper). */
+  pdfx?: boolean;
 }
 
 const fontUrl = (file: string) => `${ORIGIN}/fonts/${file}`;
@@ -95,7 +98,12 @@ export function renderPdf(book: Book, outPath: string, options: RenderOptions = 
       show(printDocument(book, { pages, fontUrl, pagedUrl: `${ORIGIN}/vendor/paged.polyfill.js`, hyphenate, digital: options.digital })),
     );
     await options.inspect?.(page);
-    const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true, outline: !!options.digital, tagged: !!options.digital });
+    let pdf: Uint8Array = await page.pdf({ preferCSSPageSize: true, printBackground: true, outline: !!options.digital, tagged: !!options.digital });
+    if (options.pdfx) {
+      const gs = await findGhostscript();
+      if (!gs) throw new Error('PDF/X needs Ghostscript: install it, or point RECTO_GHOSTSCRIPT at it.');
+      pdf = await convertToPdfx(gs, pdf, { title: book.meta.title, gray: book.style.paper !== 'color' });
+    }
     const finished = options.digital ? { ...book, style: { ...book.style, bleed: false } } : book;
     writeFileSync(outPath, await finishPdf(pdf, pdfFinish(finished, 'interior')));
     return result;
@@ -127,13 +135,13 @@ async function main() {
   const out = outIndex >= 0 ? args.splice(outIndex, 2)[1] : undefined;
   const input = args.find((a) => !a.startsWith('-'));
   if (!input && !args.includes('--sample')) {
-    console.error('usage: npm run pdf -- <book.recto> [-o out.pdf] [--reading]   |   npm run pdf -- --sample');
+    console.error('usage: npm run pdf -- <book.recto> [-o out.pdf] [--reading | --pdfx]   |   npm run pdf -- --sample');
     process.exit(1);
   }
   const book = input ? parseBook(readFileSync(input, 'utf8')) : sampleBook();
   const outPath = resolve(out ?? fileNameFor(book, 'pdf'));
   const started = Date.now();
-  const { pages, passes } = await renderPdf(book, outPath, { digital: args.includes('--reading') });
+  const { pages, passes } = await renderPdf(book, outPath, { digital: args.includes('--reading'), pdfx: args.includes('--pdfx') });
   console.log(`${outPath}: ${pages} pages, ${passes} layout pass(es), ${((Date.now() - started) / 1000).toFixed(1)}s`);
 }
 

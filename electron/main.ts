@@ -1,12 +1,16 @@
 // Recto's desktop shell. Serves the built web app from a private app:// origin,
-// exports PDFs with Chromium's printToPDF, runs the spellchecker in the book's
-// language and opens .recto files from the file manager.
+// exports PDFs with Chromium's printToPDF (and PDF/X through an installed
+// Ghostscript), runs the spellchecker in the book's language, opens and saves
+// .recto files in place, and opens EPUBs in Kindle Previewer when it's there.
 
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { basename, join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type PdfFinish, finishPdf } from '../src/export/print/finish';
+import { type Ghostscript, convertToPdfx, findGhostscript } from '../src/export/print/pdfx';
+import { findKindlePreviewer, openInKindlePreviewer } from './kindle';
+import { checkForUpdates } from './updates';
 import {
   BrowserWindow,
   type ContextMenuParams,
@@ -37,6 +41,10 @@ protocol.registerSchemesAsPrivileged([
 interface OpenedFile {
   name: string;
   text: string;
+  /** Where the file is, so Save can write it back in place. */
+  path: string;
+  /** Its modification time when read, to notice if something else changes it before Save. */
+  modified: number;
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -51,13 +59,26 @@ const debug = (...args: unknown[]) => {
 
 const rectoPathIn = (argv: string[]) => argv.find((arg) => arg.toLowerCase().endsWith('.recto'));
 
+/**
+ * Files the author chose (in an Open or Save dialog, or by opening them from
+ * the file manager). Save writes in place only to these; any other path goes
+ * through a Save dialog first, so the app page can't write anywhere it likes.
+ */
+const grantedPaths = new Set<string>();
+
 async function readRecto(path: string): Promise<OpenedFile | null> {
   try {
-    return { name: basename(path), text: await readFile(path, 'utf8') };
+    const [text, info] = await Promise.all([readFile(path, 'utf8'), stat(path)]);
+    grantedPaths.add(path);
+    return { name: basename(path), text, path, modified: Math.round(info.mtimeMs) };
   } catch {
     return null;
   }
 }
+
+let ghostscript: Promise<Ghostscript | null> | undefined;
+/** Looked up once a session: running gs --version takes a moment. */
+const findGs = () => (ghostscript ??= findGhostscript());
 
 function serveApp(): void {
   protocol.handle(SCHEME, (request) => {
@@ -139,7 +160,8 @@ function buildMenu(): void {
         { label: 'New Book', accelerator: 'CmdOrCtrl+N', click: send('new-book') },
         { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: send('open') },
         { label: 'Import Manuscript…', accelerator: 'CmdOrCtrl+Shift+O', click: send('import') },
-        { label: 'Save a Copy…', accelerator: 'CmdOrCtrl+S', click: send('save') },
+        { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: send('save') },
+        { id: 'save-as', label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: send('save-as') },
         { type: 'separator' },
         { label: 'Export EPUB…', accelerator: 'CmdOrCtrl+E', click: send('export-epub') },
         { label: 'Export PDF…', accelerator: 'CmdOrCtrl+P', click: send('export-pdf') },
@@ -163,6 +185,9 @@ function buildMenu(): void {
     {
       role: 'help',
       submenu: [
+        { id: 'check-updates', label: 'Check for Updates…', click: () => void checkForUpdates(mainWindow) },
+        { label: 'Recto on GitHub', click: () => void shell.openExternal('https://github.com/fsiuhgshiqoih32/recto') },
+        { type: 'separator' },
         {
           label: 'About Recto',
           click: () =>
@@ -245,10 +270,12 @@ function registerIpc(): void {
     return { pages };
   });
 
-  ipcMain.handle('pdf:save', async (_event, fileName: string, finish?: PdfFinish, options?: { outline?: boolean; tagged?: boolean }) => {
+  ipcMain.handle('pdf:save', async (_event, fileName: string, finish?: PdfFinish, options?: { outline?: boolean; tagged?: boolean; pdfx?: { gray: boolean } }) => {
     if (!printWindow || printWindow.isDestroyed()) throw new Error('Nothing has been laid out yet.');
+    const gs = options?.pdfx ? await findGs() : null;
+    if (options?.pdfx && !gs) throw new Error('Ghostscript isn’t installed, so Recto can’t make PDF/X files.');
     const choice = await dialog.showSaveDialog(mainWindow!, {
-      title: 'Export PDF',
+      title: options?.pdfx ? 'Export PDF/X-1a' : 'Export PDF',
       defaultPath: join(app.getPath('documents'), fileName),
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
@@ -265,6 +292,8 @@ function registerIpc(): void {
       generateTaggedPDF: !!options?.tagged,
     });
     debug('printToPDF took', Date.now() - started, 'ms');
+    // Grey or CMYK colour and an output intent, which Chromium can't write.
+    if (gs && options?.pdfx) pdf = await convertToPdfx(gs, pdf, { title: finish?.title ?? '', gray: options.pdfx.gray });
     // Metadata and the TrimBox/BleedBox printers use, which printToPDF can't write.
     if (finish) pdf = await finishPdf(pdf, finish);
     await writeFile(choice.filePath, pdf);
@@ -273,6 +302,48 @@ function registerIpc(): void {
   });
 
   ipcMain.handle('pdf:cancel', () => closePrintWindow());
+
+  ipcMain.handle('file:open-dialog', async () => {
+    const choice = await dialog.showOpenDialog(mainWindow!, {
+      title: 'Open Book',
+      defaultPath: app.getPath('documents'),
+      filters: [{ name: 'Recto book', extensions: ['recto'] }],
+      properties: ['openFile'],
+    });
+    return choice.canceled || !choice.filePaths[0] ? null : readRecto(choice.filePaths[0]);
+  });
+
+  ipcMain.handle('file:save', async (_event, text: string, options: { path?: string; modified?: number; name: string; force?: boolean; saveAs?: boolean }) => {
+    // Something else changed the file since Recto read or wrote it (another computer, through a synced folder): ask first.
+    if (options.path && !options.saveAs && !options.force && options.modified !== undefined) {
+      const current = await stat(options.path).catch(() => null);
+      if (current && Math.round(current.mtimeMs) !== options.modified) return { conflict: { modified: Math.round(current.mtimeMs) } };
+    }
+    let path = !options.saveAs && options.path && grantedPaths.has(options.path) ? options.path : undefined;
+    if (!path) {
+      const choice = await dialog.showSaveDialog(mainWindow!, {
+        title: options.saveAs ? 'Save As' : 'Save Book',
+        defaultPath: options.path ?? join(app.getPath('documents'), basename(options.name)),
+        filters: [{ name: 'Recto book', extensions: ['recto'] }],
+      });
+      if (choice.canceled || !choice.filePath) return null;
+      path = choice.filePath;
+      grantedPaths.add(path);
+    }
+    // Write beside it, then swap it in, so a crash mid-save never leaves half a book.
+    const temp = `${path}.${randomUUID().slice(0, 8)}.tmp`;
+    await writeFile(temp, text, 'utf8');
+    await rename(temp, path);
+    return { path, modified: Math.round((await stat(path)).mtimeMs) };
+  });
+
+  ipcMain.handle('tools:find', async () => ({ kindlePreviewer: !!findKindlePreviewer(), ghostscript: (await findGs())?.version ?? null }));
+
+  ipcMain.handle('kindle:open', async (_event, bytes: Uint8Array, fileName: string) => {
+    const previewer = findKindlePreviewer();
+    if (!previewer) throw new Error('Kindle Previewer 3 isn’t installed.');
+    return { path: await openInKindlePreviewer(previewer, bytes, fileName) };
+  });
 
   ipcMain.handle('file:take-pending', () => {
     const file = pendingFile;
