@@ -1,0 +1,21 @@
+{
+  "format": "recto-style",
+  "version": 1,
+  "name": "Lantern",
+  "author": "Recto contributors",
+  "description": "Warm and traditional: Crimson Pro, centered capitals for chapter titles, a flourish above each heading, a little more leading. Suits cozy mysteries and historical fiction.",
+  "license": "CC0-1.0",
+  "theme": "octavo",
+  "custom": {
+    "bodyFont": "crimson-pro",
+    "headingFont": "cormorant-garamond",
+    "chapterLabel": "words",
+    "headingAlign": "center",
+    "titleCase": "capitals",
+    "titleSize": "medium",
+    "ornament": "flourish",
+    "headingOrnament": "above",
+    "lineSpacing": "loose",
+    "css": ".el blockquote { font-style: italic; margin: 1em 2em; }\n.scene-break { margin: 1.4em 0; }"
+  }
+}

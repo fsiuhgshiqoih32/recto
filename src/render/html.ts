@@ -10,6 +10,7 @@ import type { Theme } from '../themes';
 import { THEMES } from '../themes';
 import { hasNode } from '../model/book';
 import type { OrnamentId } from '../themes/ornaments';
+import { customTheme } from '../themes/custom';
 
 export type Target = 'epub' | 'print' | 'preview';
 
@@ -645,6 +646,8 @@ export function renderBook(ctx: RenderContext): RenderedElement[] {
   }));
 }
 
+/** The book's style, with any changes the author made to it. */
 export function themeOf(book: Book): Theme {
-  return THEMES[book.style.theme] ?? THEMES.octavo;
+  const base = THEMES[book.style.theme] ?? THEMES.octavo;
+  return book.style.custom ? customTheme(base, book.style.custom) : base;
 }

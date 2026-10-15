@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
 import { chapterLabel } from '../i18n/labels';
 import { languageInfo } from '../i18n/languages';
 import { LanguagePicker } from './LanguagePicker';
@@ -14,29 +14,8 @@ import { ORNAMENTS } from '../themes/ornaments';
 import type { BookActions } from './useBook';
 import { isBoxSet, volumeMembers } from '../model/boxset';
 import { listBooks, loadBook } from '../store/db';
-
-function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
-  return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      {children}
-      {hint && <span className="field-hint">{hint}</span>}
-    </label>
-  );
-}
-
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
-  return (
-    <label className="toggle">
-      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="toggle-track" aria-hidden="true" />
-      <span>
-        <span className="toggle-label">{label}</span>
-        {hint && <span className="field-hint">{hint}</span>}
-      </span>
-    </label>
-  );
-}
+import { Field, Toggle } from './fields';
+import { StyleBuilder } from './StyleBuilder';
 
 const UNITS = [{ id: 'in', label: 'in' }, { id: 'mm', label: 'mm' }] as const;
 
@@ -97,6 +76,8 @@ export function StylePanel({ book, actions }: { book: Book; actions: BookActions
           </button>
         ))}
       </div>
+
+      <StyleBuilder key={book.id} book={book} actions={actions} />
 
       <h3 className="panel-heading">Print</h3>
       <Field label="Binding">

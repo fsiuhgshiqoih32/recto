@@ -2,6 +2,7 @@
 // editor, the importers and the renderer all share one document format.
 
 import type { Binding, TrimId } from '../export/print/trims';
+import type { StyleCustom } from '../themes/custom';
 
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 
@@ -148,6 +149,8 @@ export interface BookStyle {
   contentsVolumesOnly?: boolean;
   /** The ebook carries the print edition's page numbers (an EPUB page list). */
   printPageNumbers?: boolean;
+  /** Changes to the style: fonts, headings, paragraphs, ornaments, advanced CSS. */
+  custom?: StyleCustom;
 }
 
 export interface Book {

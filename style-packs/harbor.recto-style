@@ -1,0 +1,19 @@
+{
+  "format": "recto-style",
+  "version": 1,
+  "name": "Harbor",
+  "author": "Recto contributors",
+  "description": "Plain and open: Lora, chapter titles aligned to the text in small capitals, a hairline rule, spaced paragraphs. Suits memoir and short nonfiction.",
+  "license": "CC0-1.0",
+  "theme": "ledger",
+  "custom": {
+    "bodyFont": "lora",
+    "headingFont": "lora",
+    "chapterLabel": "label-number",
+    "headingAlign": "start",
+    "titleCase": "small-caps",
+    "ornament": "rule",
+    "paragraphs": "spaced",
+    "css": ".chapter-label { letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.8em; }"
+  }
+}

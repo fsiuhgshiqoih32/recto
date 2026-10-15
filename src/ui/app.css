@@ -722,6 +722,17 @@ select {
 .cover-thumb.is-empty { display: grid; place-items: center; background: var(--well); color: var(--ink-3); font-size: 12px; box-shadow: none; border: 1px dashed var(--line-strong); }
 .cover-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .section-edit { margin-top: 18px; }
+.style-builder { margin: 14px 0 4px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
+.style-builder[open] { padding-bottom: 14px; }
+.style-builder > summary { display: flex; align-items: center; gap: 8px; min-height: 42px; font-weight: 500; cursor: pointer; list-style: none; }
+.style-builder > summary::-webkit-details-marker { display: none; }
+.style-builder > summary::after { content: ''; width: 7px; height: 7px; margin-left: auto; border-right: 1.5px solid var(--ink-3); border-bottom: 1.5px solid var(--ink-3); transform: rotate(45deg) translateY(-2px); transition: transform var(--t-fast) var(--ease-out); }
+.style-builder[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+.style-builder > .field-hint:first-of-type { margin: 0 0 12px; }
+.badge { padding: 1px 7px; border-radius: 999px; background: var(--accent-wash); color: var(--accent-strong); font-size: 11.5px; font-weight: 600; }
+.css-input { width: 100%; font: 12.5px/1.5 var(--font-mono); tab-size: 2; resize: vertical; }
+.builder-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.css-notes { margin: 10px 0 0; padding: 10px 12px 10px 28px; border-radius: var(--radius-sm); background: var(--well); color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
 .section-note { margin-top: 18px; padding: 14px; border-radius: var(--radius-md); background: var(--well); color: var(--ink-2); font-size: 12.5px; line-height: 1.55; }
 .section-note p { margin: 0 0 12px; }
 
