@@ -5,6 +5,7 @@ import type { Book } from '../../model/book';
 import { anchorId, esc, escAttr, renderBook, themeOf } from '../../render/html';
 import { ORNAMENTS } from '../../themes/ornaments';
 import { languageInfo } from '../../i18n/languages';
+import { breaksScript } from './breaks';
 import { estimatePages, printCss, spreadScreenCss } from './pageCss';
 
 export interface PrintDocumentOptions {
@@ -42,6 +43,7 @@ export function printDocument(book: Book, opts: PrintDocumentOptions): string {
     hrefFor: (el) => `#${anchorId(el)}`,
     ornament: (id) => ORNAMENTS[id],
     hyphenate: opts.hyphenate,
+    links: false,
   });
   const firstBody = book.elements.find((el) => el.matter === 'body');
   const wanted = opts.elementIds ? new Set(opts.elementIds) : null;
@@ -111,6 +113,7 @@ ${printCss(book, { pages, fontUrl: opts.fontUrl, text: `${book.meta.title} ${boo
 </style>
 <script>${afterScript}</script>
 <script src="${escAttr(opts.pagedUrl)}"></script>
+<script>${breaksScript}</script>
 </head>
 <body>
 ${sections}

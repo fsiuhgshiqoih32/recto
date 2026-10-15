@@ -75,8 +75,9 @@ export function printCss(book: Book, opts: { pages: number; fontUrl: (file: stri
   const m = pageMargins(trim, opts.pages);
   const contentHeight = trim.height - m.top - m.bottom;
   const opener = book.style.startOnRecto ? 'right' : 'page';
-  const head = `font-family: var(--heading-font); ${theme.runningHead} color: #333;`;
-  const folio = 'font-family: var(--body-font); font-size: 0.85em; color: #333;';
+  // Printers want text in 100% black: grey would be screened into a dot pattern.
+  const head = `font-family: var(--heading-font); ${theme.runningHead} color: #000;`;
+  const folio = 'font-family: var(--body-font); font-size: 0.85em; color: #000;';
   const verso = cssString(book.meta.author || book.meta.title);
   const recto = book.style.rectoHeader === 'chapter' ? 'string(chapter)' : cssString(book.meta.title);
   const blank = '@top-center { content: none; } @bottom-center { content: none; }';
@@ -107,7 +108,7 @@ ${theme.css}
 @page :blank { ${blank} }
 @page chapter:first { ${blank} }
 html { font-size: ${trim.fontSize}pt; }
-body { margin: 0; color: #111; line-height: 1.42; font-family: var(--body-font); }
+body { margin: 0; color: #000; line-height: 1.42; font-family: var(--body-font); }
 .el p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; widows: 2; orphans: 2; }
 .el p.align-center { text-align: center; }
 .el p.align-right { text-align: right; }
@@ -124,9 +125,10 @@ body { margin: 0; color: #111; line-height: 1.42; font-family: var(--body-font);
 .chapter-head, .el[data-matter="back"] .matter-head { padding-top: ${sink(0.2)}; margin-bottom: 2.4em; }
 .body-start { counter-reset: page 1; }
 .running { string-set: chapter content(text); }
-.toc-list a { display: flex; align-items: baseline; gap: 0.5em; }
-.toc-list a .toc-title { flex: 1; }
-.toc-list a::after { content: target-counter(attr(href), page); margin-inline-start: auto; }
+.toc-list .toc-entry { display: flex; align-items: baseline; gap: 0.5em; }
+.toc-list .toc-entry .toc-title { flex: 1; }
+.toc-list span.toc-entry::after { content: target-counter(attr(data-target), page); margin-inline-start: auto; }
+.toc-list a.toc-entry::after { content: target-counter(attr(href), page); margin-inline-start: auto; }
 img.figure { max-height: ${(contentHeight * 0.6).toFixed(2)}in; }
 ${languageCss(lang)}
 `;

@@ -66,6 +66,13 @@ export interface BookMeta {
   description: string;
   /** Cover image as a data: URL. */
   cover?: string;
+  /** What the EPUB declares about its accessibility beyond what Recto can work out itself. */
+  accessibility?: {
+    /** A European Accessibility Act exemption (W3C a11y:exemption). */
+    exemption?: 'eaa-microenterprise' | 'eaa-disproportionate-burden' | 'eaa-fundamental-alteration';
+    /** The author has checked the book against WCAG 2.2 AA and claims conformance. */
+    conformance?: boolean;
+  };
 }
 
 export interface BookStyle {

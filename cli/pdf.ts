@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type Browser, chromium } from '@playwright/test';
+import { type Browser, type Page, chromium } from '@playwright/test';
 import type { Book } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
 import { printDocument } from '../src/export/print/paged';
@@ -45,10 +45,16 @@ function assetPath(url: URL): string | null {
   return null;
 }
 
-export async function renderPdf(book: Book, outPath: string): Promise<{ pages: number; passes: number }> {
+export interface RenderOptions {
+  /** Runs against the laid-out print document, before the PDF is written (tests use it to inspect pages). */
+  inspect?: (page: Page) => Promise<void>;
+}
+
+export async function renderPdf(book: Book, outPath: string, options: RenderOptions = {}): Promise<{ pages: number; passes: number }> {
   const browser = await launch();
   try {
     const page = await browser.newPage();
+    if (process.env.RECTO_DEBUG) page.on('console', (message) => console.log('[print]', message.text()));
     let html = '';
     await page.route(`${ORIGIN}/**`, async (route) => {
       const url = new URL(route.request().url());
@@ -72,6 +78,7 @@ export async function renderPdf(book: Book, outPath: string): Promise<{ pages: n
       });
       return page.evaluate(() => (window as unknown as { __rectoPages: number }).__rectoPages);
     });
+    await options.inspect?.(page);
     writeFileSync(outPath, await page.pdf({ preferCSSPageSize: true, printBackground: true }));
     return result;
   } finally {

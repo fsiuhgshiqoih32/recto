@@ -60,17 +60,17 @@ export const THEMES: Record<ThemeId, Theme> = {
     dropCap: false,
     runningHead: 'font-size: 0.7em; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;',
     css: `
-.chapter-head { text-align: start; border-top: 1px solid #222; padding-top: 0.7em; }
+.chapter-head { text-align: start; border-top: 1px solid currentColor; padding-top: 0.7em; }
 .chapter-label { font-size: 3.2em; font-weight: 600; line-height: 1; }
 .chapter-title { font-size: 0.95em; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 0.9em; }
 .chapter-subtitle { text-align: start; }
 .lead { font-weight: 600; }
-.part-head { text-align: start; border-top: 1px solid #222; padding-top: 0.7em; }
+.part-head { text-align: start; border-top: 1px solid currentColor; padding-top: 0.7em; }
 .part-label { font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; font-size: 0.85em; }
 .part-title { font-size: 2.2em; font-weight: 600; }
 .book-title { font-size: 2.3em; font-weight: 600; text-align: start; }
 .title-page { text-align: start; }
-.matter-heading { font-size: 1.6em; font-weight: 600; text-align: start; border-top: 1px solid #222; padding-top: 0.5em; }
+.matter-heading { font-size: 1.6em; font-weight: 600; text-align: start; border-top: 1px solid currentColor; padding-top: 0.5em; }
 `,
   },
   marginalia: {

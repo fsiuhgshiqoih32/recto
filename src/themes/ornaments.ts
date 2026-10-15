@@ -1,9 +1,10 @@
 // Original scene-break ornaments, drawn for Recto. Colors are explicit (not
-// currentColor) because ebook readers load them through <img>.
+// currentColor) because ebook readers load them through <img>. Pure black, so
+// print PDFs carry no grey tints that a printer would screen.
 
 export type OrnamentId = 'diamonds' | 'rule' | 'flourish' | 'squares' | 'asterism';
 
-const INK = '#2a2a2a';
+const INK = '#000';
 
 const svg = (viewBox: string, body: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="${viewBox.split(' ')[2]}" height="${viewBox.split(' ')[3]}">${body}</svg>`;

@@ -23,6 +23,11 @@ export interface RenderContext {
   imageSrc?: (src: string) => string;
   /** Inserts soft hyphens into body text (print only; ebook readers hyphenate themselves). */
   hyphenate?: (text: string) => string;
+  /**
+   * Emit hyperlinks (default true). Print PDFs leave them out: KDP asks for
+   * files without link annotations, and paper can't be clicked anyway.
+   */
+  links?: boolean;
 }
 
 export interface Numbering {
@@ -83,7 +88,7 @@ export function elementTocText(el: BookElement, num: Numbering | undefined, them
   return label || title || 'Untitled';
 }
 
-function wrapMarks(html: string, marks: Mark[] | undefined): string {
+function wrapMarks(html: string, marks: Mark[] | undefined, links = true): string {
   if (!marks?.length) return html;
   const order: Mark['type'][] = ['smallCaps', 'italic', 'bold', 'link'];
   let out = html;
@@ -93,21 +98,21 @@ function wrapMarks(html: string, marks: Mark[] | undefined): string {
     if (type === 'italic') out = `<em>${out}</em>`;
     else if (type === 'bold') out = `<strong>${out}</strong>`;
     else if (type === 'smallCaps') out = `<span class="sc">${out}</span>`;
-    else if (type === 'link' && mark.attrs?.href) out = `<a href="${escAttr(mark.attrs.href)}">${out}</a>`;
+    else if (type === 'link' && mark.attrs?.href) out = links ? `<a href="${escAttr(mark.attrs.href)}">${out}</a>` : `<span class="link">${out}</span>`;
   }
   return out;
 }
 
-export function renderInline(nodes: InlineNode[] | undefined, hyphenate?: (text: string) => string): string {
+export function renderInline(nodes: InlineNode[] | undefined, hyphenate?: (text: string) => string, links = true): string {
   return (nodes ?? [])
-    .map((node) => (node.type === 'hardBreak' ? '<br/>' : wrapMarks(esc(hyphenate ? hyphenate(node.text) : node.text), node.marks)))
+    .map((node) => (node.type === 'hardBreak' ? '<br/>' : wrapMarks(esc(hyphenate ? hyphenate(node.text) : node.text), node.marks, links)))
     .join('');
 }
 
 /** Wraps the first letter (with any opening quote) in a drop cap and the next words in a lead-in span. */
-export function renderOpener(nodes: InlineNode[], dropCap: boolean, hyphenate?: (text: string) => string): string {
+export function renderOpener(nodes: InlineNode[], dropCap: boolean, hyphenate?: (text: string) => string, links = true): string {
   const [first, ...rest] = nodes;
-  if (!first || first.type !== 'text') return renderInline(nodes, hyphenate);
+  if (!first || first.type !== 'text') return renderInline(nodes, hyphenate, links);
   let text = first.text;
   let html = '';
   if (dropCap) {
@@ -115,16 +120,16 @@ export function renderOpener(nodes: InlineNode[], dropCap: boolean, hyphenate?: 
     if (m) {
       // An opening quote rides along with the letter, set smaller so it doesn't outweigh it.
       const quote = m[1] ? `<span class="dq">${esc(m[1])}</span>` : '';
-      html += wrapMarks(`<span class="dropcap">${quote}${esc(m[2])}</span>`, first.marks);
+      html += wrapMarks(`<span class="dropcap">${quote}${esc(m[2])}</span>`, first.marks, links);
       text = text.slice(m[0].length);
     }
   }
   // Lead-in: the rest of the first word plus up to two more.
   const lead = (dropCap && html ? /^\S*(?:\s+\S+){0,2}/ : /^\S+(?:\s+\S+){0,2}/).exec(text)?.[0] ?? '';
-  if (lead) html += wrapMarks(`<span class="lead">${esc(lead)}</span>`, first.marks);
+  if (lead) html += wrapMarks(`<span class="lead">${esc(lead)}</span>`, first.marks, links);
   const remaining = text.slice(lead.length);
-  if (remaining) html += wrapMarks(esc(hyphenate ? hyphenate(remaining) : remaining), first.marks);
-  return html + renderInline(rest, hyphenate);
+  if (remaining) html += wrapMarks(esc(hyphenate ? hyphenate(remaining) : remaining), first.marks, links);
+  return html + renderInline(rest, hyphenate, links);
 }
 
 function hasText(nodes: InlineNode[] | undefined): nodes is InlineNode[] {
@@ -142,8 +147,9 @@ export function renderBlocks(blocks: BlockNode[], ctx: RenderContext, opts: Bloc
   const cased = isBicameral(languageInfo(ctx.book.meta.language).script);
   const dropCap = cased && ctx.book.style.dropCaps && ctx.theme.dropCap;
   const { hyphenate } = ctx;
+  const links = ctx.links !== false;
   const opener = (content: InlineNode[], withDropCap: boolean) =>
-    cased ? renderOpener(content, withDropCap, hyphenate) : renderInline(content, hyphenate);
+    cased ? renderOpener(content, withDropCap, hyphenate, links) : renderInline(content, hyphenate, links);
   let html = '';
   let index = 0;
   let afterBreak = false;
@@ -165,14 +171,14 @@ export function renderBlocks(blocks: BlockNode[], ctx: RenderContext, opts: Bloc
           html += `<p class="first">${opener(block.content, false)}</p>\n`;
         } else {
           // Centered and right-aligned lines (attributions, verse) stay unhyphenated.
-          html += `<p${alignClass ? ` class="${alignClass}"` : ''}>${renderInline(block.content, plain ? ctx.hyphenate : undefined)}</p>\n`;
+          html += `<p${alignClass ? ` class="${alignClass}"` : ''}>${renderInline(block.content, plain ? ctx.hyphenate : undefined, links)}</p>\n`;
         }
         afterBreak = false;
         break;
       }
       case 'heading': {
         const level = Math.min(Math.max(block.attrs?.level ?? 2, 2), 3);
-        html += `<h${level}>${renderInline(block.content)}</h${level}>\n`;
+        html += `<h${level}>${renderInline(block.content, undefined, links)}</h${level}>\n`;
         afterBreak = true;
         break;
       }
@@ -199,11 +205,22 @@ function headOrnament(ctx: RenderContext): string {
   return ctx.theme.headingOrnament ? `<div class="head-orn" aria-hidden="true">${ctx.ornament(ctx.theme.ornament)}</div>` : '';
 }
 
+/** DPUB-ARIA roles matching the epub:type semantics, for assistive technology. */
+const DOC_ROLE: Partial<Record<ElementKind, string>> = {
+  dedication: 'doc-dedication',
+  epigraph: 'doc-epigraph',
+  toc: 'doc-toc',
+  part: 'doc-part',
+  chapter: 'doc-chapter',
+  acknowledgments: 'doc-acknowledgments',
+};
+
 function sectionOpen(el: BookElement, extraClass = ''): string {
   const type = EPUB_TYPE[el.kind];
+  const role = DOC_ROLE[el.kind];
   return (
     `<section class="el ${el.kind}${extraClass ? ` ${extraClass}` : ''}" id="${anchorId(el)}" data-matter="${el.matter}"` +
-    `${type ? ` epub:type="${type}"` : ''}>\n`
+    `${type ? ` epub:type="${type}"` : ''}${role ? ` role="${role}"` : ''}>\n`
   );
 }
 
@@ -270,7 +287,12 @@ function renderToc(el: BookElement, numbering: Map<string, Numbering>, ctx: Rend
         (label ? `<span class="toc-label">${esc(label)}</span>` : '') +
         (title ? `<span class="toc-title">${esc(title)}</span>` : '') ||
         `<span class="toc-title">Untitled</span>`;
-      return `<li class="toc-${e.kind}"><a href="${escAttr(ctx.hrefFor(e))}">${text}</a></li>`;
+      // Print reads the page number off a data attribute (target-counter), so the PDF needs no link.
+      const entry =
+        ctx.links === false
+          ? `<span class="toc-entry" data-target="${escAttr(ctx.hrefFor(e))}">${text}</span>`
+          : `<a class="toc-entry" href="${escAttr(ctx.hrefFor(e))}">${text}</a>`;
+      return `<li class="toc-${e.kind}">${entry}</li>`;
     })
     .join('\n');
   return (

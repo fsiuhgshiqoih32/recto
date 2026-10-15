@@ -1,5 +1,6 @@
 import type { BookMeta } from '../../model/book';
 import { esc, escAttr } from '../../render/html';
+import { type AccessibilityMetadata, accessibilityMetaLines } from './accessibility';
 
 export interface ManifestItem {
   id: string;
@@ -28,6 +29,9 @@ export function opfDocument(opts: {
   coverImageId?: string;
   /** Right-to-left books turn their pages the other way. */
   dir?: 'ltr' | 'rtl';
+  accessibility?: AccessibilityMetadata;
+  /** The print edition a page list refers to (dc:source), e.g. urn:isbn:978…. */
+  source?: string;
 }): string {
   const { meta } = opts;
   const lang = meta.language || 'en';
@@ -50,7 +54,9 @@ export function opfDocument(opts: {
   if (meta.copyrightYear) {
     lines.push(`<dc:rights>Copyright © ${esc(meta.copyrightYear)} ${esc(meta.author)}</dc:rights>`);
   }
+  if (opts.source) lines.push(`<dc:source>${esc(opts.source)}</dc:source>`);
   lines.push(`<meta property="dcterms:modified">${modifiedStamp(opts.modified)}</meta>`);
+  if (opts.accessibility) lines.push(...accessibilityMetaLines(opts.accessibility, esc));
   // EPUB 2 readers find the cover through this meta.
   if (opts.coverImageId) lines.push(`<meta name="cover" content="${escAttr(opts.coverImageId)}"/>`);
 

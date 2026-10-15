@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { sampleBook } from '../../src/model/sample';
 import { buildEpub, decodeDataUrl } from '../../src/export/epub/package';
+import { accessibilityFacts, accessibilityMetadata, storeAnswers } from '../../src/export/epub/accessibility';
 import type { Book } from '../../src/model/book';
 
 // 1×1 transparent PNG.
@@ -99,6 +100,60 @@ describe('EPUB package', () => {
     expect(zip.file('OEBPS/fonts/eb-garamond-latin-400-normal.woff2')).not.toBeNull();
     const css = await zip.file('OEBPS/styles/book.css')!.async('string');
     expect(css).toContain('url("../fonts/eb-garamond-latin-400-normal.woff2")');
+  });
+
+  it('declares accessibility metadata derived from the book', async () => {
+    const { zip } = await open(sampleBook());
+    const opf = await zip.file('OEBPS/content.opf')!.async('string');
+    expect(opf).toContain('<meta property="schema:accessMode">textual</meta>');
+    expect(opf).toContain('<meta property="schema:accessModeSufficient">textual</meta>');
+    for (const feature of ['tableOfContents', 'structuralNavigation', 'readingOrder', 'displayTransformability']) {
+      expect(opf).toContain(`<meta property="schema:accessibilityFeature">${feature}</meta>`);
+    }
+    expect(opf).toContain('<meta property="schema:accessibilityHazard">none</meta>');
+    expect(opf).toMatch(/<meta property="schema:accessibilitySummary">This ebook has a table of contents/);
+    expect(opf).not.toContain('dcterms:conformsTo');
+    // Sections carry DPUB-ARIA roles alongside their epub:type.
+    const chapterFile = Object.keys(zip.files).find((p) => p.endsWith('-chapter.xhtml'))!;
+    expect(await zip.file(chapterFile)!.async('string')).toContain('epub:type="chapter" role="doc-chapter"');
+  });
+
+  it('tells readers when images have no text description', async () => {
+    const book = sampleBook();
+    book.meta.cover = PNG;
+    const chapter = book.elements.find((el) => el.kind === 'chapter')!;
+    chapter.content.content.push({ type: 'image', attrs: { src: PNG, alt: '' } });
+    let opf = await (await open(book)).zip.file('OEBPS/content.opf')!.async('string');
+    expect(opf).toContain('<meta property="schema:accessMode">visual</meta>');
+    expect(opf).not.toContain('<meta property="schema:accessModeSufficient">textual</meta>');
+    expect(opf).toContain('<meta property="schema:accessModeSufficient">textual,visual</meta>');
+    expect(opf).not.toContain('alternativeText');
+    expect(opf).toContain('1 of its 2 images has no text description.');
+
+    (chapter.content.content.at(-1) as { attrs: { alt: string } }).attrs.alt = 'A map of Harrow Point';
+    opf = await (await open(book)).zip.file('OEBPS/content.opf')!.async('string');
+    expect(opf).toContain('<meta property="schema:accessibilityFeature">alternativeText</meta>');
+    expect(opf).toContain('<meta property="schema:accessModeSufficient">textual</meta>');
+    expect(opf).toContain('All 2 of its images have text descriptions.');
+  });
+
+  it('declares an EAA exemption and a conformance claim the author makes', async () => {
+    const book = sampleBook();
+    book.meta.accessibility = { exemption: 'eaa-microenterprise', conformance: true };
+    const opf = await (await open(book)).zip.file('OEBPS/content.opf')!.async('string');
+    expect(opf).toContain('<meta property="a11y:exemption">eaa-microenterprise</meta>');
+    expect(opf).toContain('<meta property="dcterms:conformsTo" id="conformance">EPUB Accessibility 1.1 - WCAG 2.2 Level AA</meta>');
+    expect(opf).toContain('<meta property="a11y:certifiedBy" refines="#conformance">Recto Sample Press</meta>');
+  });
+
+  it('phrases the same facts as answers for store forms', () => {
+    const book = sampleBook();
+    const facts = accessibilityFacts(book);
+    const answers = storeAnswers(accessibilityMetadata(book, facts), facts);
+    const answer = (question: RegExp) => answers.find((a) => question.test(a.question))!.answer;
+    expect(answer(/screen reader/)).toBe('Yes');
+    expect(answer(/text descriptions/)).toBe('Not applicable (no images)');
+    expect(answer(/Conformance/)).toBe('Not claimed');
   });
 
   it('decodes data URLs', () => {

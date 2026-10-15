@@ -6,6 +6,7 @@ import { ORNAMENTS } from '../../themes/ornaments';
 import { bookFonts, facesFor } from '../../themes/fonts';
 import { bookStrings, languageInfo } from '../../i18n/languages';
 import { buildTocTree, type Landmark, navDocument } from './nav';
+import { accessibilityFacts, accessibilityMetadata } from './accessibility';
 import { ncxDocument } from './ncx';
 import { type ManifestItem, bookIdentifier, opfDocument } from './opf';
 
@@ -176,7 +177,15 @@ export async function epubFiles(book: Book, options: EpubOptions = {}): Promise<
 
   files.push({
     path: 'OEBPS/content.opf',
-    data: opfDocument({ meta: book.meta, uid, modified: options.modified ?? new Date(), items, coverImageId, dir }),
+    data: opfDocument({
+      meta: book.meta,
+      uid,
+      modified: options.modified ?? new Date(),
+      items,
+      coverImageId,
+      dir,
+      accessibility: accessibilityMetadata(book, accessibilityFacts(book)),
+    }),
   });
   files.push({ path: 'META-INF/container.xml', data: CONTAINER_XML });
   return files;

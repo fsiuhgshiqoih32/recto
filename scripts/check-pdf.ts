@@ -1,13 +1,15 @@
 // Renders the sample book to PDF and checks what a printer cares about:
 // exact trim size, chapters opening on right-hand pages, no running heads or
-// folios on openers, running heads and correct folios on ordinary pages, and
-// page numbers in the contents that match the folios.
+// folios on openers, running heads and correct folios on ordinary pages, page
+// numbers in the contents that match the folios, pure black ink, no link
+// annotations, and no paragraph leaving a single line behind at a page break.
 //
 //   npm run test:pdf [-- --all]
 
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import type { Page } from '@playwright/test';
+import { OPS, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { renderPdf } from '../cli/pdf';
 import type { ThemeId, TrimId } from '../src/model/book';
 import { sampleBook } from '../src/model/sample';
@@ -21,6 +23,62 @@ interface PageInfo {
   height: number;
   /** Text items with their vertical position as a fraction of page height from the top. */
   items: { str: string; y: number }[];
+  /** Link and other annotations on the page. */
+  annotations: number;
+  /** Every fill and stroke color the page paints with, as #rrggbb. */
+  colors: Set<string>;
+}
+
+// pdf.js hands colors over as typed arrays, whose map() would coerce the hex strings back to numbers.
+const hex = (rgb: ArrayLike<number>) => `#${Array.from(rgb).map((v) => Math.round(v <= 1 ? v * 255 : v).toString(16).padStart(2, '0')).join('')}`;
+
+/** #000 → #000000, so colors compare as one form. */
+const longHex = (color: string) => color.toLowerCase().replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/, '#$1$1$2$2$3$3');
+
+/** Colors set by the page's drawing operators (images aside). */
+function paintColors(fnArray: number[], argsArray: unknown[][]): Set<string> {
+  const colors = new Set<string>();
+  fnArray.forEach((fn, i) => {
+    const args = argsArray[i] ?? [];
+    if (fn === OPS.setFillRGBColor || fn === OPS.setStrokeRGBColor) {
+      colors.add(typeof args[0] === 'string' ? longHex(args[0]) : hex(args as unknown as ArrayLike<number>));
+    } else if (fn === OPS.setFillGray || fn === OPS.setStrokeGray) {
+      const gray = args[0] as number;
+      colors.add(hex([gray, gray, gray]));
+    } else if (fn === OPS.setFillCMYKColor || fn === OPS.setStrokeCMYKColor) {
+      colors.add(`cmyk(${(args as number[]).join(',')})`);
+    }
+  });
+  return colors;
+}
+
+/** Pages where a split paragraph leaves fewer than two lines at the foot, or carries fewer than two over. */
+async function strandedLines(page: Page): Promise<string[]> {
+  // Plain JavaScript: tsx would wrap named functions in a helper the page doesn't have.
+  return page.evaluate(`(() => {
+    function lineCount(block) {
+      var tops = [];
+      var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      var range = document.createRange();
+      for (var node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (node.parentElement && node.parentElement.closest('.dropcap')) continue;
+        range.selectNodeContents(node);
+        Array.from(range.getClientRects()).forEach(function (r) {
+          if (r.width > 0 && r.height > 0 && !tops.some(function (t) { return Math.abs(t - r.top) < r.height / 2; })) tops.push(r.top);
+        });
+      }
+      return tops.length;
+    }
+    var problems = [];
+    document.querySelectorAll('.pagedjs_page').forEach(function (page, i) {
+      var blocks = Array.from(page.querySelectorAll('.pagedjs_page_content p')).filter(function (p) { return p.textContent.trim(); });
+      var first = blocks[0];
+      var last = blocks[blocks.length - 1];
+      if (first && first.hasAttribute('data-split-from') && lineCount(first) < 2) problems.push('page ' + (i + 1) + ' starts with a single carried-over line');
+      if (last && last.hasAttribute('data-split-to') && lineCount(last) < 2) problems.push('page ' + (i + 1) + ' ends with a single line of a new paragraph');
+    });
+    return problems;
+  })()`);
 }
 
 /**
@@ -40,7 +98,9 @@ async function readPdf(path: string): Promise<PageInfo[]> {
     const items = content.items
       .filter((it): it is typeof it & { str: string; transform: number[] } => 'str' in it && !!it.str.trim())
       .map((it) => ({ str: it.str, y: 1 - it.transform[5] / height }));
-    pages.push({ width, height, items });
+    const annotations = (await page.getAnnotations()).length;
+    const ops = await page.getOperatorList();
+    pages.push({ width, height, items, annotations, colors: paintColors(ops.fnArray, ops.argsArray) });
   }
   return pages;
 }
@@ -57,12 +117,18 @@ async function checkBook(trim: TrimId, theme: ThemeId) {
   book.style.theme = theme;
   mkdirSync('out', { recursive: true });
   const path = join('out', `sample-${theme}-${trim}.pdf`);
-  const { pages: count } = await renderPdf(book, path);
+  let stranded: string[] = [];
+  const { pages: count } = await renderPdf(book, path, { inspect: async (page) => void (stranded = await strandedLines(page)) });
   const pages = await readPdf(path);
   const t = TRIMS[trim];
   console.log(`\n${theme}, ${t.label}: ${count} pages → ${path}`);
 
   check(pages.length === count, `PDF has the ${count} pages paged.js laid out`);
+  check(stranded.length === 0, `no widows or orphans${stranded.length ? ` (${stranded.join('; ')})` : ''}`);
+  const annotations = pages.reduce((n, p) => n + p.annotations, 0);
+  check(annotations === 0, `the PDF has no link annotations (found ${annotations})`);
+  const inks = [...new Set(pages.flatMap((p) => [...p.colors]))].filter((c) => c !== '#000000' && c !== '#ffffff');
+  check(inks.length === 0, `text, rules and ornaments are pure black${inks.length ? ` (also found ${inks.join(', ')})` : ''}`);
   const sizes = new Set(pages.map((p) => `${p.width.toFixed(1)}×${p.height.toFixed(1)}`));
   check(
     sizes.size === 1 && Math.abs(pages[0].width - t.width * 72) < 0.6 && Math.abs(pages[0].height - t.height * 72) < 0.6,
@@ -100,10 +166,19 @@ async function checkBook(trim: TrimId, theme: ThemeId) {
     `folios count from the first chapter${wrong.length ? ` (page ${wrong[0].i + 1} shows "${foot(wrong[0].p)}", expected ${wrong[0].i - bodyStart + 1})` : ''}`,
   );
 
+  // Running heads and folios are drawn once. Chrome 131+ can paint @page margin
+  // boxes itself on top of paged.js's own, which would double them.
+  const doubled = pages.findIndex((p) => p.items.filter((it) => it.y > 0.9 && /^\d+$/.test(it.str.trim())).length > 1);
+  check(doubled < 0, `every page has at most one folio${doubled >= 0 ? ` (page ${doubled + 1} has more)` : ''}`);
+
   // Contents entries end in the page number where that element opens.
-  const listed = /FOGSEASON(\d+)/.exec(all(pages[tocIndex]))?.[1];
-  const fog = openerIndex('Fog Season');
-  check(listed === String(fog - bodyStart + 1), `contents lists "Fog Season" on page ${fog - bodyStart + 1} (got ${listed})`);
+  const contents = all(pages[tocIndex]);
+  for (const opener of openers) {
+    const index = openerIndex(opener);
+    // Number-only chapter labels (Ledger's "2") run straight on from the previous entry's page number.
+    const listed = new RegExp(`${squash(opener)}(\\d+)`).exec(contents)?.[1];
+    check(!!listed?.startsWith(String(index - bodyStart + 1)), `contents lists "${opener}" on page ${index - bodyStart + 1} (got ${listed})`);
+  }
 
   // Recto hyphenates body text itself; line-end hyphens come out as their own "-" glyph runs.
   const hyphenBreaks = pages.reduce((n, p) => n + p.items.filter((it) => it.str === '-').length, 0);

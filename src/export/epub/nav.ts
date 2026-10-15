@@ -57,7 +57,7 @@ export function navDocument(opts: { title: string; lang: string; dir: 'ltr' | 'r
 <link rel="stylesheet" type="text/css" href="styles/book.css"/>
 </head>
 <body>
-<nav epub:type="toc" id="toc">
+<nav epub:type="toc" id="toc" role="doc-toc">
 <h1>${esc(opts.heading)}</h1>
 ${navList(opts.toc)}</nav>
 <nav epub:type="landmarks" id="landmarks" hidden="hidden">
