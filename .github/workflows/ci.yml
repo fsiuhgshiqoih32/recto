@@ -61,7 +61,8 @@ jobs:
           npm install --global @daisy/ace@1.4.6
           for book in out/epub-*.epub; do
             # Exit 2 means accessibility violations; anything else, Ace itself failed. Either way, say why.
-            if ! ace --force --exiterror2 --subdir --outdir out/ace "$book" > ace.log 2>&1; then
+            # Ace runs in Electron, which needs a display.
+            if ! xvfb-run --auto-servernum ace --force --exiterror2 --subdir --outdir out/ace "$book" > ace.log 2>&1; then
               echo "::error title=DAISY Ace failed on $book::$(tail -c 1500 ace.log | tr '\n' ' ')"
               exit 1
             fi
